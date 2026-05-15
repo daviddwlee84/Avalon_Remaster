@@ -84,3 +84,20 @@ Every `ServerMsg` carrying state ships a per-recipient `PlayerView` (projected b
 - **Zod** for wire-protocol runtime validation
 - **Vitest** + fast-check for unit + property tests
 - **Playwright** for multi-browser-context e2e
+
+<!-- project-knowledge-harness:readme-roadmap -->
+<!-- Snippet for project's README.md, placed near other meta sections like
+     "Customization" or "Contributing". -->
+
+## Roadmap & lessons learned
+
+Forward-looking work — long-term ideas, deferred items, things needing
+evaluation — lives in [`TODO.md`](TODO.md), prioritised P1 → P3 with effort
+estimates (S/M/L/XL). Items with accompanying research, design notes, or paused
+troubleshooting link to a corresponding [`backlog/<slug>.md`](backlog/) doc.
+
+Backward-looking knowledge — past traps and non-obvious debugging — lives in
+[`pitfalls/`](pitfalls/), titled by symptom so future-you can grep the error
+message and land on the root cause + workaround instead of re-debugging from
+scratch.
+<!-- project-knowledge-harness:readme-roadmap --> (end)
