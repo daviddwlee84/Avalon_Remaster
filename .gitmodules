@@ -1,0 +1,6 @@
+[submodule "references/Avalon"]
+	path = references/Avalon
+	url = git@github.com:daviddwlee84/Avalon.git
+[submodule "references/Chinese-Chess_Xiangqi"]
+	path = references/Chinese-Chess_Xiangqi
+	url = git@github.com:daviddwlee84/Chinese-Chess_Xiangqi.git
