@@ -1,0 +1,7 @@
+{
+  "name": "@avalon/tui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Placeholder for future TUI client (Phase 8 backlog). Will use Ink (React-for-CLI) + Bun JSX to consume @avalon/protocol over WebSocket."
+}

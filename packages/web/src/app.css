@@ -1,0 +1,18 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-parchment: #f5e9d3;
+  --color-ink: #1a0f00;
+  --color-gold: #b8860b;
+  --color-blood: #8b0000;
+  --color-evil: #4b0000;
+  --color-good: #1e3a5f;
+}
+
+html,
+body {
+  background: var(--color-parchment);
+  color: var(--color-ink);
+  min-height: 100vh;
+  font-family: system-ui, -apple-system, 'Segoe UI', 'Noto Sans TC', sans-serif;
+}
