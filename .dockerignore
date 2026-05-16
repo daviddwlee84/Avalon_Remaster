@@ -1,0 +1,49 @@
+.git
+.github
+.gitignore
+.gitmodules
+
+node_modules
+**/node_modules
+.svelte-kit
+**/.svelte-kit
+build
+**/build
+dev-dist
+**/dev-dist
+
+# Test artifacts — re-generated in CI/dev, not needed for the image
+test-results
+**/test-results
+playwright-report
+**/playwright-report
+playwright/.cache
+**/.cache
+
+# Reference submodules (chess-web + original Avalon) are read-only sources
+# we don't ship to production.
+references
+
+# Project-knowledge harness + agent skills + session metadata are dev tooling.
+.agents
+.claude
+.specstory
+TODO.md
+backlog
+pitfalls
+README.md
+AGENTS.md
+CLAUDE.md
+.editorconfig
+.prettierrc
+docs
+
+# Local Docker artifacts
+Dockerfile
+.dockerignore
+docker-compose.yml
+justfile
+
+# OS noise
+.DS_Store
+*.log

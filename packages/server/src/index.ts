@@ -6,6 +6,12 @@ import type { ServerWebSocket } from 'bun';
 import { type PeerSink, RoomRegistry } from './registry.js';
 
 const PORT = Number(process.env.PORT ?? 3000);
+/**
+ * Optional static directory served as the SPA fallback after WS upgrades
+ * and Hono REST. Set to /app/packages/web/build in the Docker image so a
+ * single container ships both the Bun WS server and the SvelteKit client.
+ */
+const STATIC_DIR = process.env.AVALON_STATIC_DIR;
 
 interface WsData {
   peerId: number;
@@ -43,7 +49,7 @@ app.get('/rooms', (c) => c.json({ rooms: registry.listRooms() }));
 
 const server = Bun.serve<WsData>({
   port: PORT,
-  fetch(req, server) {
+  async fetch(req, server) {
     const url = new URL(req.url);
 
     // WebSocket upgrade paths.
@@ -67,7 +73,27 @@ const server = Bun.serve<WsData>({
       return new Response('Upgrade failed', { status: 400 });
     }
 
-    // Fall through to Hono for HTTP.
+    // Hono REST routes are explicit — anything else is either a static asset
+    // or a SPA route the SvelteKit client owns.
+    if (url.pathname === '/health' || url.pathname === '/rooms') {
+      return app.fetch(req);
+    }
+
+    // Static fallback when packaged with the SvelteKit build (Docker image).
+    if (STATIC_DIR) {
+      // Strip leading slash, refuse ../ traversal. The Bun.file fetch handles
+      // mime types from extension and 404s gracefully.
+      const safePath = decodeURIComponent(url.pathname).replace(/\.\.\/?/g, '');
+      const target = safePath === '/' ? '/index.html' : safePath;
+      const file = Bun.file(STATIC_DIR + target);
+      if (await file.exists()) return new Response(file);
+      // SPA fallback — any unknown route ships index.html so the SvelteKit
+      // client router resolves it client-side. Matches the GH Pages 404.html
+      // trick but in-process.
+      const fallback = Bun.file(STATIC_DIR + '/index.html');
+      if (await fallback.exists()) return new Response(fallback);
+    }
+
     return app.fetch(req);
   },
   websocket: {
