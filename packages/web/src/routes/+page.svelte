@@ -5,6 +5,7 @@
   import CreateRoomForm from '$lib/components/game/CreateRoomForm.svelte';
   import HelpDialog from '$lib/components/help/HelpDialog.svelte';
   import LocaleSwitch from '$lib/components/i18n/LocaleSwitch.svelte';
+  import ActiveRoomsList from '$lib/components/lobby/ActiveRoomsList.svelte';
   import { t } from '$lib/i18n/locale.svelte';
   import { loadDisplayName, saveDisplayName, stashPendingConfig } from '$lib/storage';
   import type { RoomCreateConfig } from '$lib/transport/ws.svelte';
@@ -157,6 +158,12 @@
           }}
         />
       </label>
+    </Card>
+  {/if}
+
+  {#if netAvailable}
+    <Card class="mt-4">
+      <ActiveRoomsList limit={5} />
     </Card>
   {/if}
 

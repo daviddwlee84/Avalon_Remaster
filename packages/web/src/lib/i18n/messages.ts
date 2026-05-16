@@ -43,6 +43,9 @@ const zhTW: Messages = {
   'lobby.join': '加入',
   'lobby.playerCount.one': '{n} 位玩家',
   'lobby.playerCount.many': '{n} 位玩家',
+  'lobby.inline.title': '目前的房間',
+  'lobby.inline.empty': '尚無進行中的房間 — 創建第一個吧。',
+  'lobby.inline.viewAll': '查看完整列表',
 
   // CreateRoomForm
   'create.title': '建立房間',
@@ -308,6 +311,9 @@ const en: Messages = {
   'lobby.join': 'Join',
   'lobby.playerCount.one': '{n} player',
   'lobby.playerCount.many': '{n} players',
+  'lobby.inline.title': 'Active rooms',
+  'lobby.inline.empty': 'No rooms yet — be the first to create one.',
+  'lobby.inline.viewAll': 'View full list',
 
   // CreateRoomForm
   'create.title': 'Create a room',
@@ -582,6 +588,9 @@ const zhCN: Messages = {
   'lobby.join': '加入',
   'lobby.playerCount.one': '{n} 位玩家',
   'lobby.playerCount.many': '{n} 位玩家',
+  'lobby.inline.title': '当前房间',
+  'lobby.inline.empty': '暂无进行中的房间 — 来开第一个吧。',
+  'lobby.inline.viewAll': '查看完整列表',
 
   'create.title': '创建房间',
   'create.roomName': '房间名称',
