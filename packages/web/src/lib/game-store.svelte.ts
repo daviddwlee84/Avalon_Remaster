@@ -41,6 +41,19 @@ export class GameStore {
    * is the route's responsibility (or just clearReconnect manually).
    */
   reconnectRoomId: string | null = null;
+  /**
+   * Set true by the route when it constructed the WS URL with a reattach
+   * bundle. If the server replies with Error{unknown_room|bad_password} as
+   * the FIRST message, we treat the bundle as stale, clear it, and call
+   * onStaleReattach so the route can reconnect as a fresh join. Without
+   * this, the user sits on "Connecting…" forever because the server is up
+   * (likely cold-restarted via ACA scale-to-zero) but the seat no longer
+   * exists in its in-memory state.
+   */
+  attemptedReattach = false;
+  onStaleReattach: (() => void) | null = null;
+  /** Number of Server messages received — for the "first reply" check. */
+  private msgCount = 0;
 
   constructor(private session: Session) {
     this.unsub = session.subscribe((msg) => this.handle(msg));
@@ -52,6 +65,22 @@ export class GameStore {
   }
 
   private handle(msg: ServerMsg): void {
+    this.msgCount++;
+    // Stale reattach detection: if the very first server reply to a reattach
+    // attempt is an Error about a missing seat / wrong token, dump the
+    // stale bundle and let the route reconnect fresh.
+    if (
+      this.attemptedReattach &&
+      this.msgCount === 1 &&
+      msg.type === 'Error' &&
+      (msg.code === 'unknown_room' || msg.code === 'bad_password') &&
+      this.reconnectRoomId
+    ) {
+      clearReconnect(this.reconnectRoomId);
+      this.attemptedReattach = false;
+      this.onStaleReattach?.();
+      return; // skip the regular Error toast — recovery is silent
+    }
     switch (msg.type) {
       case 'Welcome':
         this.myPeerId = msg.peerId;

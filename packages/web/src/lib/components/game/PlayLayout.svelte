@@ -24,6 +24,10 @@
      * LAN-mode leaves it undefined (LAN session is transient, no replay).
      */
     reconnectRoomId?: string;
+    /** True if the parent built the WS URL with reattach params. */
+    attemptedReattach?: boolean;
+    /** Parent's callback when the server tells us the reattach token is dead. */
+    onStaleReattach?: () => void;
   }
 
   let {
@@ -32,12 +36,16 @@
     roomLabel,
     leaveHref = '/',
     reconnectRoomId,
+    attemptedReattach = false,
+    onStaleReattach,
   }: Props = $props();
 
   // `session` is owned by the parent route and stable for the life of this layout.
   // Reading it via untrack so Svelte doesn't warn about capturing only the initial value.
   const store = new GameStore(untrack(() => session));
   store.reconnectRoomId = untrack(() => reconnectRoomId) ?? null;
+  store.attemptedReattach = untrack(() => attemptedReattach);
+  store.onStaleReattach = untrack(() => onStaleReattach) ?? null;
 
   let selectedTeam = $state<string[]>([]);
   let chatInput = $state('');
@@ -131,6 +139,44 @@
 
   const EVIL_ROLES = new Set(['Assassin', 'Morgana', 'Mordred', 'Oberon', 'Minion']);
   const iCanFailQuest = $derived(!!view?.myRole && EVIL_ROLES.has(view.myRole));
+
+  /**
+   * Players whose seat is offline AND whose action the current phase needs
+   * to advance. The engine already pauses transitions on missing input
+   * (pendingApproveVotes / pendingQuestVotes / captain pick / Lady holder
+   * pick / Assassin pick), but other players have no UI cue — they just see
+   * the phase frozen. This list drives the explicit "waiting for X to
+   * reconnect" banner.
+   */
+  const blockingDisconnects = $derived.by(() => {
+    if (!view) return [] as string[];
+    const offline = view.players.filter((p) => !p.connected);
+    if (offline.length === 0) return [];
+    const names = (ps: typeof view.players): string[] => ps.map((p) => p.displayName);
+    switch (view.phase) {
+      case 'team_selection':
+        return names(offline.filter((p) => p.isCaptain));
+      case 'team_vote':
+        return names(
+          offline.filter((p) => view.approveVoteSubmitted[p.id] === false),
+        );
+      case 'quest':
+        return names(
+          offline.filter(
+            (p) =>
+              view.proposedTeam.includes(p.id) && view.questVoteSubmitted[p.id] === false,
+          ),
+        );
+      case 'lady_of_lake':
+        return names(offline.filter((p) => p.isLadyOfTheLakeHolder));
+      case 'assassination':
+        // No isAssassin flag on the public view — fall back to "any offline
+        // player who isn't me", since the Assassin's identity is hidden.
+        return names(offline.filter((p) => p.id !== myPlayerId));
+      default:
+        return [];
+    }
+  });
 </script>
 
 <div class="flex items-baseline justify-between gap-2">
@@ -196,6 +242,22 @@
           {/each}
         </ul>
       </Card>
+
+      {#if blockingDisconnects.length > 0}
+        <div
+          class="rounded-lg border-2 border-gold/70 bg-gold/15 p-3 text-center"
+          role="status"
+          aria-live="polite"
+          data-testid="waiting-banner"
+        >
+          <p class="font-display text-sm font-bold tracking-wider uppercase">
+            {t('disconnect.waiting.title')}
+          </p>
+          <p class="mt-0.5 text-xs">
+            {t('disconnect.waiting.body', { names: blockingDisconnects.join(', ') })}
+          </p>
+        </div>
+      {/if}
 
       <Card class="border-gold/30 bg-parchment-deep/30">
         {#if view.phase === 'lobby'}

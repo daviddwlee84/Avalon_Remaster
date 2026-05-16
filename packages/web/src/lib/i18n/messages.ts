@@ -183,6 +183,10 @@ const zhTW: Messages = {
   'toast.questResult.success': '第 {round} 輪：成功（{n} 張失敗票）',
   'toast.questResult.fail': '第 {round} 輪：失敗（{n} 張失敗票）',
 
+  // Disconnect / waiting
+  'disconnect.waiting.title': '⏳ 等待重新連線',
+  'disconnect.waiting.body': '遊戲已暫停，等待 {names} 回來。',
+
   // LAN host page
   'lan.host.title': '主機 LAN 對局',
   'lan.host.back': '← 返回',
@@ -449,6 +453,8 @@ const en: Messages = {
   // Toasts
   'toast.questResult.success': 'Round {round}: SUCCESS ({n} fail{s})',
   'toast.questResult.fail': 'Round {round}: FAIL ({n} fail{s})',
+  'disconnect.waiting.title': '⏳ Waiting to reconnect',
+  'disconnect.waiting.body': 'Game paused — waiting for {names}.',
 
   // LAN
   'lan.host.title': 'Host a LAN game',
@@ -702,6 +708,8 @@ const zhCN: Messages = {
 
   'toast.questResult.success': '第 {round} 轮：成功（{n} 张失败票）',
   'toast.questResult.fail': '第 {round} 轮：失败（{n} 张失败票）',
+  'disconnect.waiting.title': '⏳ 等待重新连接',
+  'disconnect.waiting.body': '游戏已暂停，等待 {names} 回来。',
 
   'lan.host.title': '主机 LAN 对局',
   'lan.host.back': '← 返回',
