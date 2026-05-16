@@ -157,6 +157,130 @@ describe('GameRoom — full happy-path game (5 players)', () => {
   });
 });
 
+describe('GameRoom — config validation at StartGame', () => {
+  it('rejects 5p + Mordred + Oberon with invalid_team rather than throwing', () => {
+    const room = new GameRoom('r1', {
+      useLadyOfTheLake: false,
+      useMordred: true,
+      useMorganaPercival: false,
+      useOberon: true,
+      rngSeed: 1,
+    });
+    for (let i = 0; i < 5; i++) room.addPeer(i, `P${i}`);
+    const out = room.apply(0, { type: 'StartGame' });
+    const err = out.find((o) => o.msg.type === 'Error');
+    expect(err).toBeDefined();
+    if (err && err.msg.type === 'Error') expect(err.msg.code).toBe('invalid_team');
+    expect(room._stateForTesting().phase).toBe('lobby');
+  });
+
+  it('rejects 6p + Lady of the Lake', () => {
+    const room = new GameRoom('r1', {
+      useLadyOfTheLake: true,
+      useMordred: false,
+      useMorganaPercival: false,
+      useOberon: false,
+      rngSeed: 1,
+    });
+    for (let i = 0; i < 6; i++) room.addPeer(i, `P${i}`);
+    const out = room.apply(0, { type: 'StartGame' });
+    const err = out.find((o) => o.msg.type === 'Error');
+    expect(err && err.msg.type === 'Error' ? err.msg.code : null).toBe('invalid_team');
+  });
+
+  it('accepts 7p + Lady of the Lake and seeds holder to seat left of captain', () => {
+    const room = new GameRoom('r1', {
+      useLadyOfTheLake: true,
+      useMordred: false,
+      useMorganaPercival: false,
+      useOberon: false,
+      rngSeed: 42,
+    });
+    for (let i = 0; i < 7; i++) room.addPeer(i, `P${i}`);
+    room.apply(0, { type: 'StartGame' });
+    const state = room._stateForTesting();
+    expect(state.phase).toBe('team_selection');
+    expect(state.ladyOfTheLakeHolder).toBeDefined();
+    const n = state.players.length;
+    const expectedSeat = (state.captainSeat - 1 + n) % n;
+    expect(state.ladyOfTheLakeHolder).toBe(state.players[expectedSeat]!.id);
+  });
+});
+
+describe('GameRoom — Lady of the Lake state machine', () => {
+  it('triggers lady_of_lake phase after round 2 then resolves via UseLadyOfLake', () => {
+    const room = new GameRoom('r1', {
+      useLadyOfTheLake: true,
+      useMordred: false,
+      useMorganaPercival: false,
+      useOberon: false,
+      rngSeed: 21,
+    });
+    for (let i = 0; i < 7; i++) room.addPeer(i, `P${i}`);
+    room.apply(0, { type: 'StartGame' });
+    const state = room._stateForTesting();
+    const initialHolderId = state.ladyOfTheLakeHolder!;
+
+    // Play 2 good quests by piling onto good players. Source: rules.ts team sizes for 7p = [2,3,3,4,4].
+    const teamSizes = [2, 3];
+    for (let round = 0; round < 2; round++) {
+      const cap = state.players.findIndex(
+        (p) => p.id === state.players[state.captainSeat]!.id,
+      );
+      const good = state.players.filter((p) => p.role && p.role !== 'Assassin' && p.role !== 'Minion');
+      const team = good.slice(0, teamSizes[round]!).map((p) => p.id);
+      room.apply(cap, { type: 'ProposeTeam', playerIds: team });
+      for (let i = 0; i < 7; i++) room.apply(i, { type: 'VoteTeam', approve: true });
+      for (const id of team) {
+        const peer = state.players.findIndex((p) => p.id === id);
+        room.apply(peer, { type: 'VoteQuest', success: true });
+      }
+    }
+
+    expect(state.phase).toBe('lady_of_lake');
+    expect(state.ladyOfTheLakeHolder).toBe(initialHolderId);
+
+    // Lady uses on a non-self target. Pick someone who hasn't been inspected.
+    const holderPeer = state.players.findIndex((p) => p.id === initialHolderId);
+    const targetId = state.players.find((p) => p.id !== initialHolderId)!.id;
+    const out = room.apply(holderPeer, {
+      type: 'UseLadyOfLake',
+      targetPlayerId: targetId,
+    });
+
+    // Holder should get a GameStateUpdate that carries ladyOfTheLakeLearned.
+    const holderUpdate = out.find(
+      (o) => o.peer === holderPeer && o.msg.type === 'GameStateUpdate',
+    );
+    expect(holderUpdate).toBeDefined();
+    if (holderUpdate && holderUpdate.msg.type === 'GameStateUpdate') {
+      expect(holderUpdate.msg.state.ladyOfTheLakeLearned?.aboutPlayerId).toBe(targetId);
+      expect(holderUpdate.msg.state.ladyOfTheLakeLearned?.alignment).toMatch(/^(good|evil)$/);
+    }
+    // No one else should see the learning.
+    for (const o of out) {
+      if (o.peer === holderPeer) continue;
+      if (o.msg.type === 'GameStateUpdate') {
+        expect(o.msg.state.ladyOfTheLakeLearned).toBeUndefined();
+      }
+    }
+
+    // Token transfers to inspected target; phase returns to team_selection.
+    expect(state.phase).toBe('team_selection');
+    expect(state.ladyOfTheLakeHolder).toBe(targetId);
+    expect(state.ladyOfTheLakeUsedOn).toContain(targetId);
+
+    // Re-inspecting the same target is rejected.
+    const repeat = room.apply(holderPeer, {
+      type: 'UseLadyOfLake',
+      targetPlayerId: targetId,
+    });
+    // We're no longer in lady_of_lake phase, so this errors with bad_phase first.
+    const err = repeat.find((o) => o.msg.type === 'Error');
+    expect(err).toBeDefined();
+  });
+});
+
 describe('GameRoom — losing paths', () => {
   it('5 consecutive rejections → evil wins by five_rejections', () => {
     const room = startGame(5, 5);

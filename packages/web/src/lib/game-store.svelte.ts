@@ -1,6 +1,11 @@
-import type { ChatLine, PlayerView, ServerMsg } from '@avalon/game-core';
+import type { Alignment, ChatLine, PlayerView, ServerMsg } from '@avalon/game-core';
 
 import type { Session } from './transport/types';
+
+interface LadyResult {
+  aboutPlayerId: string;
+  alignment: Alignment;
+}
 
 /**
  * Reactive view of game state for a single connected session.
@@ -15,6 +20,14 @@ export class GameStore {
   chat: ChatLine[] = $state([]);
   /** True after a RoleReveal message arrives — used to flash the role card. */
   showRoleReveal: boolean = $state(false);
+  /**
+   * Latest Lady-of-the-Lake reveal addressed to the local player. Set when a
+   * GameStateUpdate arrives carrying `ladyOfTheLakeLearned`; cleared by
+   * dismissLadyResult(). The engine only ships `ladyOfTheLakeLearned` to the
+   * holder for one update, so this view-side latch keeps the modal visible
+   * across subsequent state updates.
+   */
+  ladyResult: LadyResult | null = $state(null);
 
   private nextToastId = 1;
   private unsub: (() => void) | null = null;
@@ -39,6 +52,12 @@ export class GameStore {
         break;
       case 'GameStateUpdate':
         this.view = msg.state;
+        if (msg.state.ladyOfTheLakeLearned) {
+          this.ladyResult = {
+            aboutPlayerId: msg.state.ladyOfTheLakeLearned.aboutPlayerId,
+            alignment: msg.state.ladyOfTheLakeLearned.alignment,
+          };
+        }
         break;
       case 'RoleReveal':
         this.view = msg.state;
@@ -75,5 +94,9 @@ export class GameStore {
 
   dismissRoleReveal(): void {
     this.showRoleReveal = false;
+  }
+
+  dismissLadyResult(): void {
+    this.ladyResult = null;
   }
 }

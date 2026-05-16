@@ -1,7 +1,13 @@
-import type { ClientMsg, ServerMsg } from '@avalon/game-core';
+import type { ClientMsg, RoomConfig, ServerMsg } from '@avalon/game-core';
 import { parseServerMsg } from '@avalon/protocol';
 
 import type { ConnState, ServerMsgHandler, Session, Transport } from './types';
+
+/** Subset of RoomConfig the URL can carry — rngSeed is server-only. */
+export type RoomCreateConfig = Pick<
+  RoomConfig,
+  'useMordred' | 'useMorganaPercival' | 'useOberon' | 'useLadyOfTheLake'
+>;
 
 /**
  * A WebSocket-backed Session that drives reactive Svelte 5 state.
@@ -79,8 +85,16 @@ export class WsSession implements Session, Transport {
  * Connects directly to the Bun server (port 3000 in dev; same-origin in production with adapter-node).
  * We don't route through Vite's HMR proxy because it tends to drop frames on Bun-native upgrades.
  */
-export function buildRoomWsUrl(roomId: string, displayName: string): string {
+export function buildRoomWsUrl(
+  roomId: string,
+  displayName: string,
+  config?: RoomCreateConfig,
+): string {
   const params = new URLSearchParams({ name: displayName });
+  if (config?.useMordred) params.set('mordred', '1');
+  if (config?.useMorganaPercival) params.set('morgana', '1');
+  if (config?.useOberon) params.set('oberon', '1');
+  if (config?.useLadyOfTheLake) params.set('lady', '1');
   const path = roomId === 'main' ? '/ws' : `/ws/${encodeURIComponent(roomId)}`;
 
   // In dev: Vite on :5173, Bun server on :3000. Override via PUBLIC_AVALON_WS_ORIGIN if needed.

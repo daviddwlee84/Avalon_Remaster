@@ -116,6 +116,66 @@ function swapFirst(pool: Role[], from: Role, to: Role): void {
   pool[idx] = to;
 }
 
+export type ConfigValidation =
+  | { ok: true }
+  | { ok: false; reason: 'lady_needs_seven' | 'not_enough_minion_slots' | 'not_enough_loyal_slots' | 'unsupported_count'; message: string };
+
+/**
+ * Validate that a RoomConfig is satisfiable for the given player count.
+ *
+ * Each special role consumes a slot:
+ *  - useMordred / useOberon / useMorganaPercival each take ONE Minion slot.
+ *  - useMorganaPercival additionally takes ONE Loyal slot (for Percival).
+ *  - useLadyOfTheLake requires 7+ players (matches in-game gate in
+ *    {@link ladyOfTheLakeActiveThisRound}).
+ *
+ * Returns the first failure encountered. Today the only callable surface is
+ * {@link GameRoom.handleStartGame}, which translates an `ok:false` result into
+ * an `Error{code:'invalid_team'}` ServerMsg.
+ */
+export function validateConfigForPlayerCount(
+  playerCount: number,
+  config: RoomConfig,
+): ConfigValidation {
+  const base = DEFAULT_DISTRIBUTION[playerCount];
+  if (!base) {
+    return {
+      ok: false,
+      reason: 'unsupported_count',
+      message: `Unsupported player count: ${playerCount} (need 5-10)`,
+    };
+  }
+  if (config.useLadyOfTheLake && playerCount < 7) {
+    return {
+      ok: false,
+      reason: 'lady_needs_seven',
+      message: 'Lady of the Lake requires 7 or more players',
+    };
+  }
+  const minionsAvailable = base.filter((r) => r === Role.Minion).length;
+  const minionsNeeded =
+    (config.useMordred ? 1 : 0) +
+    (config.useOberon ? 1 : 0) +
+    (config.useMorganaPercival ? 1 : 0);
+  if (minionsNeeded > minionsAvailable) {
+    return {
+      ok: false,
+      reason: 'not_enough_minion_slots',
+      message: `Special roles need ${minionsNeeded} Minion slots; ${playerCount}-player distribution has only ${minionsAvailable}`,
+    };
+  }
+  const loyalsAvailable = base.filter((r) => r === Role.LoyalServant).length;
+  const loyalsNeeded = config.useMorganaPercival ? 1 : 0;
+  if (loyalsNeeded > loyalsAvailable) {
+    return {
+      ok: false,
+      reason: 'not_enough_loyal_slots',
+      message: `Percival needs a Loyal slot; ${playerCount}-player distribution has none to give`,
+    };
+  }
+  return { ok: true };
+}
+
 /**
  * Lady of the Lake is available in rounds 3, 4, and 5 when:
  * - config.useLadyOfTheLake is true

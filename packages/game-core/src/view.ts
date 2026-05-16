@@ -79,6 +79,7 @@ export function projectView(
     questVoteSubmitted,
     questHistory: state.questHistory.map((q) => ({ ...q })),
     ladyOfTheLakeLearned: opts.ladyOfTheLakeLearned,
+    ladyOfTheLakeUsedOn: [...state.ladyOfTheLakeUsedOn],
     winner: state.winner,
     winReason: state.winReason,
     assassinTarget: state.assassinTarget,

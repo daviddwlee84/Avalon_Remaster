@@ -111,6 +111,7 @@ const PlayerViewSchema = z.object({
   ladyOfTheLakeLearned: z
     .object({ aboutPlayerId: z.string(), alignment: AlignmentSchema })
     .optional(),
+  ladyOfTheLakeUsedOn: z.array(z.string()),
   winner: AlignmentSchema.optional(),
   winReason: z
     .enum([

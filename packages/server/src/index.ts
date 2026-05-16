@@ -1,4 +1,4 @@
-import { DEFAULT_ROOM_CONFIG } from '@avalon/game-core';
+import { DEFAULT_ROOM_CONFIG, type RoomConfig } from '@avalon/game-core';
 import { parseClientMsg } from '@avalon/protocol';
 import { Hono } from 'hono';
 import type { ServerWebSocket } from 'bun';
@@ -12,6 +12,18 @@ interface WsData {
   roomId: string;
   displayName: string;
   isLobby: boolean;
+  /** Config supplied via WS query params; only honoured if the room is being created fresh. */
+  desiredConfig: RoomConfig;
+}
+
+function parseConfigFromQuery(params: URLSearchParams): RoomConfig {
+  const truthy = (v: string | null): boolean => v === '1' || v === 'true';
+  return {
+    useMordred: truthy(params.get('mordred')),
+    useMorganaPercival: truthy(params.get('morgana')),
+    useOberon: truthy(params.get('oberon')),
+    useLadyOfTheLake: truthy(params.get('lady')),
+  };
 }
 
 const registry = new RoomRegistry();
@@ -38,9 +50,10 @@ const server = Bun.serve<WsData>({
       const roomId = isLobby ? '' : url.pathname === '/ws' ? 'main' : url.pathname.slice(4);
       const displayName = url.searchParams.get('name') ?? 'Player';
       const peerId = registry.allocatePeerId();
+      const desiredConfig = parseConfigFromQuery(url.searchParams);
 
       const upgraded = server.upgrade(req, {
-        data: { peerId, roomId, displayName, isLobby },
+        data: { peerId, roomId, displayName, isLobby, desiredConfig },
       });
       if (upgraded) return undefined;
       return new Response('Upgrade failed', { status: 400 });
@@ -56,9 +69,11 @@ const server = Bun.serve<WsData>({
         registry.subscribeLobby(sink);
         return;
       }
-      // Ensure room exists (Phase 1: any roomId on /ws/<id> auto-creates with default config).
+      // Ensure room exists. The first connecting peer's desiredConfig becomes the room
+      // config; later joiners' configs are ignored (host's config wins, per Phase 3 design).
+      // The persistent "main" room always stays on DEFAULT_ROOM_CONFIG.
       if (ws.data.roomId !== 'main') {
-        registry.getOrCreateRoom(ws.data.roomId, DEFAULT_ROOM_CONFIG);
+        registry.getOrCreateRoom(ws.data.roomId, ws.data.desiredConfig);
       }
       registry.joinRoom(ws.data.roomId, ws.data.displayName, sink);
     },

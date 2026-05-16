@@ -95,6 +95,94 @@ describe('projectView — role visibility', () => {
   });
 });
 
+describe('projectView — Merlin sight with Mordred and Oberon specials', () => {
+  // Rule: Merlin sees ALL evil players (including Oberon) EXCEPT Mordred.
+  // Oberon's hidden-from-evil property is asymmetric to Merlin's sight.
+
+  // 9p base distribution: 1 Merlin, 5 Loyal, 1 Assassin, 2 Minion.
+  // useMordred consumes 1 Minion; useOberon consumes the second.
+  it('9p + Mordred + Oberon: Merlin sees Assassin and Oberon but NOT Mordred', () => {
+    const config = {
+      useLadyOfTheLake: false,
+      useMordred: true,
+      useMorganaPercival: false,
+      useOberon: true,
+      rngSeed: 17,
+    };
+    const room = new GameRoom('r1', config);
+    for (let i = 0; i < 9; i++) room.addPeer(i, `P${i}`);
+    room.apply(0, { type: 'StartGame' });
+    const state = room._stateForTesting();
+    expect(state.phase).not.toBe('lobby'); // confirm StartGame succeeded
+    const merlin = state.players.find((p) => p.role === Role.Merlin)!;
+    const view = projectView(state, merlin.id);
+
+    for (const p of state.players) {
+      if (p.id === merlin.id) continue;
+      if (p.role === Role.Assassin || p.role === Role.Oberon) {
+        expect(view.knownAlignments[p.id], `Merlin should see ${p.role}`).toBe('evil');
+      } else {
+        // Mordred + Loyals → invisible.
+        expect(view.knownAlignments[p.id], `Merlin should NOT see ${p.role}`).toBeUndefined();
+      }
+    }
+  });
+
+  it('10p + everything: Merlin sees Assassin + Morgana + Minion + Oberon, NOT Mordred', () => {
+    // 10p base: 1 Merlin, 5 Loyal, 1 Assassin, 3 Minion → can fit all 4 specials.
+    const config = {
+      useLadyOfTheLake: true,
+      useMordred: true,
+      useMorganaPercival: true,
+      useOberon: true,
+      rngSeed: 25,
+    };
+    const room = new GameRoom('r1', config);
+    for (let i = 0; i < 10; i++) room.addPeer(i, `P${i}`);
+    room.apply(0, { type: 'StartGame' });
+    const state = room._stateForTesting();
+    expect(state.phase).not.toBe('lobby');
+    const merlin = state.players.find((p) => p.role === Role.Merlin)!;
+    const view = projectView(state, merlin.id);
+
+    for (const p of state.players) {
+      if (p.id === merlin.id) continue;
+      if (
+        p.role === Role.Assassin ||
+        p.role === Role.Morgana ||
+        p.role === Role.Minion ||
+        p.role === Role.Oberon
+      ) {
+        expect(view.knownAlignments[p.id], `Merlin should see ${p.role}`).toBe('evil');
+      } else {
+        // Mordred, Loyals, Percival → invisible.
+        expect(view.knownAlignments[p.id], `Merlin should NOT see ${p.role}`).toBeUndefined();
+      }
+    }
+  });
+
+  it('Assassin in 10p + Oberon: sees Morgana + other Minions, NOT Oberon', () => {
+    // Locks down the asymmetry: evil-team visibility excludes Oberon.
+    const room = new GameRoom('r1', {
+      useLadyOfTheLake: false,
+      useMordred: false,
+      useMorganaPercival: true,
+      useOberon: true,
+      rngSeed: 33,
+    });
+    for (let i = 0; i < 10; i++) room.addPeer(i, `P${i}`);
+    room.apply(0, { type: 'StartGame' });
+    const state = room._stateForTesting();
+    const assassin = state.players.find((p) => p.role === Role.Assassin)!;
+    const oberon = state.players.find((p) => p.role === Role.Oberon)!;
+    const view = projectView(state, assassin.id);
+
+    expect(view.knownAlignments[oberon.id]).toBeUndefined();
+    const morgana = state.players.find((p) => p.role === Role.Morgana);
+    if (morgana) expect(view.knownAlignments[morgana.id]).toBe('evil');
+  });
+});
+
 describe('projectView — projection shape', () => {
   it('omits other players roles entirely from serialised view', () => {
     const room = new GameRoom('r1', { useLadyOfTheLake: false, useMordred: true, useMorganaPercival: true, useOberon: true, rngSeed: 8 });

@@ -9,6 +9,7 @@ import {
   questTeamSize,
   rolePool,
   twoFailsRequired,
+  validateConfigForPlayerCount,
 } from './rules.js';
 import { mulberry32, shuffleInPlace } from './rng.js';
 import type {
@@ -247,6 +248,12 @@ export class GameRoom {
       ];
     }
 
+    // Validate config can be satisfied (e.g. 5p + Mordred + Oberon over-consumes Minion slots).
+    const valid = validateConfigForPlayerCount(this.state.players.length, this.state.config);
+    if (!valid.ok) {
+      return [{ peer: peerId, msg: errMsg('invalid_team', valid.message) }];
+    }
+
     // Assign roles.
     const pool = rolePool(this.state.players.length, this.state.config);
     shuffleInPlace(pool, this.rng);
@@ -256,6 +263,15 @@ export class GameRoom {
 
     // Captain starts random.
     this.state.captainSeat = Math.floor(this.rng() * this.state.players.length);
+
+    // Lady of the Lake starts in the hand of the player to the right of the first captain.
+    // Source: standard Avalon rules — Lady gate already enforced by validateConfigForPlayerCount.
+    if (this.state.config.useLadyOfTheLake) {
+      const n = this.state.players.length;
+      const holderSeat = (this.state.captainSeat - 1 + n) % n;
+      this.state.ladyOfTheLakeHolder = this.state.players[holderSeat]!.id;
+    }
+
     this.state.phase = 'role_reveal';
     this.state.currentRound = 1;
     this.state.consecutiveRejections = 0;

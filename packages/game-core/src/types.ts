@@ -181,6 +181,8 @@ export interface PlayerView {
 
   /** Visible ONLY to the holder right after they use Lady of the Lake. */
   ladyOfTheLakeLearned?: { aboutPlayerId: PlayerId; alignment: Alignment };
+  /** Public per-Avalon-rules: which players have already been inspected by the Lady this game. */
+  ladyOfTheLakeUsedOn: PlayerId[];
 
   winner?: Alignment;
   winReason?: GameState['winReason'];

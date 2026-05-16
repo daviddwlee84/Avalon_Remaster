@@ -1,12 +1,13 @@
 <script lang="ts">
   import { page } from '$app/state';
   import { Button, Card, Dialog, DialogContent } from '$lib/components/ui';
+  import LadyResult from '$lib/components/game/LadyResult.svelte';
   import PlayerTile from '$lib/components/game/PlayerTile.svelte';
   import QuestTokenStrip from '$lib/components/game/QuestTokenStrip.svelte';
   import RoleCardReveal from '$lib/components/game/RoleCardReveal.svelte';
   import VoteRevealStrip from '$lib/components/game/VoteRevealStrip.svelte';
   import { GameStore } from '$lib/game-store.svelte';
-  import { loadDisplayName } from '$lib/storage';
+  import { loadDisplayName, takePendingConfig } from '$lib/storage';
   import { WsSession, buildRoomWsUrl } from '$lib/transport/ws.svelte';
   import { onDestroy, onMount } from 'svelte';
 
@@ -21,7 +22,8 @@
 
   onMount(() => {
     displayName = loadDisplayName() || 'Player';
-    const s = new WsSession(buildRoomWsUrl(roomId, displayName));
+    const pendingConfig = takePendingConfig(roomId);
+    const s = new WsSession(buildRoomWsUrl(roomId, displayName, pendingConfig));
     session = s;
     store = new GameStore(s);
   });
@@ -93,6 +95,20 @@
   function nominateAssassin(targetId: string) {
     session?.send({ type: 'NominateAssassinTarget', targetPlayerId: targetId });
   }
+
+  function useLady(targetId: string) {
+    session?.send({ type: 'UseLadyOfLake', targetPlayerId: targetId });
+  }
+
+  const ladyTargetName = $derived(
+    store?.ladyResult
+      ? (view?.players.find((p) => p.id === store!.ladyResult!.aboutPlayerId)?.displayName ??
+          '?')
+      : '',
+  );
+
+  const ladyHolder = $derived(view?.players.find((p) => p.isLadyOfTheLakeHolder) ?? null);
+  const iHoldLady = $derived(ladyHolder?.id === myPlayerId);
 
   function winLabel(w: string | undefined, reason: string | undefined): string {
     if (!w) return '';
@@ -255,6 +271,19 @@
           </p>
         {:else if view.phase === 'quest'}
           <h2 class="font-display mb-2 text-xl font-bold">Quest underway</h2>
+          {#if view.twoFailsRequired}
+            <div
+              class="mb-3 rounded-lg border-2 border-blood/70 bg-blood/10 p-3 text-center"
+              data-testid="two-fails-banner"
+            >
+              <p class="font-display text-sm font-bold tracking-wider text-blood uppercase">
+                ⚠ Round 4 special
+              </p>
+              <p class="mt-0.5 text-xs tracking-wider uppercase">
+                <strong>2 fail votes</strong> are required to fail this quest.
+              </p>
+            </div>
+          {/if}
           {#if iAmOnTeam}
             {#if view.myPendingQuestVote === null}
               <p class="text-sm">You are on this quest. Vote secretly:</p>
@@ -321,7 +350,39 @@
         {:else if view.phase === 'role_reveal'}
           <p class="text-sm opacity-70">Roles dealt — see your card.</p>
         {:else if view.phase === 'lady_of_lake'}
-          <p class="text-sm opacity-70">Lady of the Lake — coming in Phase 3.</p>
+          <h2 class="font-display mb-2 text-xl font-bold">
+            🌊 Lady of the Lake
+          </h2>
+          {#if iHoldLady}
+            <p class="text-sm">
+              You hold the Lady. Choose a player to learn their true allegiance — privately.
+            </p>
+            <ul class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {#each view.players.filter((p) => p.id !== myPlayerId && !view.ladyOfTheLakeUsedOn.includes(p.id)) as p (p.id)}
+                <li>
+                  <PlayerTile
+                    player={p}
+                    isMe={false}
+                    alignment={view.knownAlignments[p.id]}
+                    selectable
+                    onClick={() => useLady(p.id)}
+                  />
+                </li>
+              {/each}
+            </ul>
+            {#if view.ladyOfTheLakeUsedOn.length > 0}
+              <p class="mt-3 text-xs opacity-60">
+                Already inspected: {view.ladyOfTheLakeUsedOn
+                  .map((id) => view.players.find((p) => p.id === id)?.displayName ?? id.slice(0, 6))
+                  .join(', ')}
+              </p>
+            {/if}
+          {:else}
+            <p class="text-sm opacity-70">
+              Waiting for <strong>{ladyHolder?.displayName ?? 'the Lady holder'}</strong> to inspect
+              a player…
+            </p>
+          {/if}
         {/if}
       </Card>
     </div>
@@ -417,6 +478,24 @@
           knownAlignments={view.knownAlignments}
           players={view.players}
           onDismiss={() => store?.dismissRoleReveal()}
+        />
+      </DialogContent>
+    </Dialog>
+  {/if}
+
+  <!-- Lady of the Lake private reveal -->
+  {#if store?.ladyResult}
+    <Dialog
+      open={true}
+      onOpenChange={(o) => {
+        if (!o) store?.dismissLadyResult();
+      }}
+    >
+      <DialogContent>
+        <LadyResult
+          targetName={ladyTargetName}
+          alignment={store.ladyResult.alignment}
+          onDismiss={() => store?.dismissLadyResult()}
         />
       </DialogContent>
     </Dialog>
