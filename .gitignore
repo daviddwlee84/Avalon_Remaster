@@ -29,3 +29,6 @@ playwright/.cache/
 .specstory/cache/
 .specstory/cli/
 .specstory/history/
+
+# Vite PWA dev-mode SW artifacts
+dev-dist/

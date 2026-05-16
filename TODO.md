@@ -24,7 +24,6 @@ Likely next batch — items you'd reach for if you sat down to work today.
 ## P2
 
 Worth doing, no rush.
-- [ ] **[M] Phase 5: PWA polish via @vite-pwa/sveltekit** — registerType:'prompt' so mid-game players don't get reloaded silently. Precache app shell + role cards + audio sprite. navigateFallbackDenylist /ws and /api. iOS Add-to-Home-Screen instructions overlay. Offline detector with LAN-mode suggestion banner. → [research](backlog/phase-5-pwa-polish.md)
 - [ ] **[M] Phase 6: i18n (zh-TW + en) and accessibility** — paraglide-js (validate first — see P? item). All visible strings keyed; zh-TW sourced from references/Avalon/. Keyboard navigation through team-selection grid; ARIA roles on vote/quest buttons; reduce-motion variant of role-card flip. → [research](backlog/phase-6-i18n-a11y.md)
 - [ ] **[L] Phase 7: reconnection grace and spectator mode** — Server holds seat 60s on close; reconnect via localStorage playerId token re-attaches and resends GameStateUpdate. Spectator role (?role=spectator) read-only, no knownAlignments, sees public game state only. → [research](backlog/phase-7-reconnect-spectators.md)
 - [ ] **[M] Expand Playwright e2e to full game flows** — Current smoke test stops after role-reveal. Add: complete 3-quest win → assassination → miss/hit Merlin; 5 consecutive rejections → evil wins; 3 failed quests → evil wins. Drive deterministically via X-Avalon-Seed header so outcomes are reproducible.
@@ -37,6 +36,7 @@ Worth doing, no rush.
 Someday / nice-to-have.
 - [ ] **[L] Phase 8: TUI client (Ink + Bun JSX)** — Bun + Ink for terminal client of the Net mode server. Consumes @avalon/protocol over WebSocket — server doesn't change. ink-table / ink-select-input for the per-player PlayerView. Useful as an admin/babysitter client and as a stress-test driver. → [research](backlog/phase-8-tui-client.md)
 - [ ] **[S] Validate RoomConfig at room creation, not at start** — Today rolePool() throws if a special-role combo over-consumes Minion slots (e.g. 6p + Mordred + Oberon). GameRoom.handleStartGame doesn't catch this; it bubbles as an unhandled exception. Either add canApplyConfig predicate in rules.ts and validate at CreateRoom, or catch in handleStartGame and return Error{code:invalid_team}.
+- [ ] **[S] PWA install UX: beforeinstallprompt + iOS A2HS overlay + PNG icons** — Phase 5 ships SVG-only icon + SW + update toast + offline banner. Defer: (a) capture beforeinstallprompt and render an Install banner (Android/desktop Chrome); (b) static instructional overlay on iOS Safari since beforeinstallprompt doesn't fire there; (c) generate proper 192/512 PNG icons via pwa-asset-generator from icon.svg so iOS Add-to-Home-Screen has the right thumbnail; (d) add link rel=apple-touch-icon with PNG variant.
 
 ## P?
 
@@ -44,6 +44,8 @@ Needs a spike before committing to a real priority. Tag as `[?/Effort]`.
 - [ ] **[?/S] paraglide-js viability spike before Phase 6** — Stand up a 'hello'/'你好' two-locale hello world. Verify per-locale tree-shaking, runtime cost, SvelteKit integration smoothness. Fallback if rough: i18next + JSON bundles. Decision artifact: ADR in docs/.
 
 ## Done
+
+- ✅ [2026-05-16] [P2/M] Phase 5: PWA polish via @vite-pwa/sveltekit — @vite-pwa/sveltekit with registerType:'prompt', SW precaches 65 entries (~1 MB), navigateFallbackDenylist for /ws+/lobby+/health, update toast + offline banner
 
 - ✅ [2026-05-16] [P1/XL] Phase 4: LAN mode via WebRTC DataChannel — HostRoomBridge + WebRtcTransport + /lan/host /lan/join routes; manual paste pairing proven by 2-context Playwright e2e
 

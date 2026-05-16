@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#f5e9d3" />
+      <stop offset="100%" stop-color="#c4a87b" />
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#d4a64b" />
+      <stop offset="100%" stop-color="#8a5e0a" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)" />
+  <rect x="36" y="36" width="440" height="440" rx="80" fill="none" stroke="#1a0f00" stroke-width="6" opacity="0.35" />
+  <!-- Stylised "A" emblem -->
+  <g transform="translate(256 268)">
+    <path d="M0 -160 L120 140 L60 140 L40 90 L-40 90 L-60 140 L-120 140 Z M-20 40 L20 40 L0 -20 Z"
+          fill="url(#gold)" stroke="#1a0f00" stroke-width="6" stroke-linejoin="round" />
+  </g>
+  <text x="256" y="448" font-family="Cinzel, IM Fell English, serif" font-size="56" font-weight="700"
+        fill="#1a0f00" text-anchor="middle" letter-spacing="6">AVALON</text>
+</svg>
