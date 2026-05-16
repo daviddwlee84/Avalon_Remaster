@@ -87,7 +87,6 @@ deploy-azure:
       --source . \
       --ingress external \
       --target-port 3000 \
-      --transport auto \
       {{ if public_ws_origin == "" { "" } else { "--env-vars PUBLIC_AVALON_WS_ORIGIN=" + public_ws_origin } }}
     @echo
     @just azure-url
