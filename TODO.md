@@ -20,7 +20,6 @@ for the maintenance workflow that agents should follow.
 ## P1
 
 Likely next batch — items you'd reach for if you sat down to work today.
-- [ ] **[XL] Phase 4: LAN mode via WebRTC DataChannel** — Host browser runs GameRoom in-process; joiner connects over RTCDataChannel with mDNS .local ICE candidates. QR-code SDP pairing + manual paste fallback. HostRoomBridge wraps GameRoom with peer routing table (local-loopback for host, DC for joiners). Highest-risk phase — 2-week budget. → [research](backlog/phase-4-lan-webrtc.md)
 
 ## P2
 
@@ -31,6 +30,7 @@ Worth doing, no rush.
 - [ ] **[M] Expand Playwright e2e to full game flows** — Current smoke test stops after role-reveal. Add: complete 3-quest win → assassination → miss/hit Merlin; 5 consecutive rejections → evil wins; 3 failed quests → evil wins. Drive deterministically via X-Avalon-Seed header so outcomes are reproducible.
 - [ ] **[S] 30-minute Bun.serve WebSocket soak test** — Phase 1 risk item: Bun.serve close-frame handling has had subtle bugs. Run 5 players in reconnect loops for 30 minutes, watch for resource leaks or stuck rooms. Fallback if unstable: swap to hono/node-server + ws (same code outside src/index.ts entry).
 - [ ] **[M] Audio cues + Settings (sound on/off)** — Short SFX clips on vote-cast / quest-resolved / game-over. Gate behind a Settings drawer (shadcn-svelte Sheet + Tabs). Source CC0 audio (Freesound), credit in SOUNDS.md. Deferred from Phase 2 UI beautification because asset sourcing + a Settings surface is a separable mini-phase.
+- [ ] **[M] Phase 4 follow-ups: QR pairing + STUN fallback + mobile testing** — Phase 4 shipped manual SDP paste only on LAN-only ICE. Defer: (a) QR encoding/scanning via BarcodeDetector + jsqr fallback for Firefox/Safari; (b) WebRtcConfig.iceMode='with-stun' UI toggle with CN-friendly server list; (c) real-device testing across iOS Safari + Android Chrome + a Xiaomi/TP-Link router for mDNS quirks; (d) host tab close = game over -- seat migration or restart UX; (e) host-side runtime diagnostics badge (ICE state / candidate count) for stuck pairings.
 
 ## P3
 
@@ -44,6 +44,8 @@ Needs a spike before committing to a real priority. Tag as `[?/Effort]`.
 - [ ] **[?/S] paraglide-js viability spike before Phase 6** — Stand up a 'hello'/'你好' two-locale hello world. Verify per-locale tree-shaking, runtime cost, SvelteKit integration smoothness. Fallback if rough: i18next + JSON bundles. Decision artifact: ADR in docs/.
 
 ## Done
+
+- ✅ [2026-05-16] [P1/XL] Phase 4: LAN mode via WebRTC DataChannel — HostRoomBridge + WebRtcTransport + /lan/host /lan/join routes; manual paste pairing proven by 2-context Playwright e2e
 
 - ✅ [2026-05-16] [P1/L] Phase 3: full role set + Lady of the Lake — validateConfigForPlayerCount + Lady-of-Lake holder init + full holder UI; 33 engine tests; svelte-check + Playwright smoke green
 

@@ -93,8 +93,25 @@
     </form>
   </Card>
 
+  <Card class="mt-4">
+    <div class="text-center">
+      <p class="font-display text-xs tracking-[0.25em] opacity-70 uppercase">LAN mode</p>
+      <p class="mt-1 text-xs opacity-60">
+        No server. Two browsers on the same WiFi exchange SDP once and play.
+      </p>
+      <div class="mt-3 grid grid-cols-2 gap-2">
+        <Button variant="outline" size="lg" type="button" class="w-full" onclick={() => goto('/lan/host')}>
+          Host LAN game
+        </Button>
+        <Button variant="outline" size="lg" type="button" class="w-full" onclick={() => goto('/lan/join')}>
+          Join LAN game
+        </Button>
+      </div>
+    </div>
+  </Card>
+
   <p class="mt-6 text-center text-xs tracking-wider opacity-60">
-    Phase 3 · Net mode · 5–10 players ·
+    Phase 4 · Net + LAN · 5–10 players ·
     <a href="/lobby" class="underline decoration-gold/60 underline-offset-2 hover:text-gold"
       >View room list</a
     >
