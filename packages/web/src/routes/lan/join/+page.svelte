@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { base } from '$app/paths';
   import { Button, Card } from '$lib/components/ui';
   import PlayLayout from '$lib/components/game/PlayLayout.svelte';
   import { t } from '$lib/i18n/locale.svelte';
@@ -56,7 +57,7 @@
 </svelte:head>
 
 <a
-  href="/"
+  href={base || '/'}
   class="font-display inline-flex items-center gap-1 text-sm opacity-70 hover:opacity-100"
 >
   {t('lan.host.back')}
@@ -124,5 +125,5 @@
     </Card>
   </section>
 {:else if stage.kind === 'playing'}
-  <PlayLayout session={stage.session} {displayName} roomLabel="LAN" leaveHref="/" />
+  <PlayLayout session={stage.session} {displayName} roomLabel="LAN" leaveHref={base || '/'} />
 {/if}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { base } from '$app/paths';
   import { Button, Card, Dialog, DialogContent } from '$lib/components/ui';
   import CreateRoomForm from '$lib/components/game/CreateRoomForm.svelte';
   import LocaleSwitch from '$lib/components/i18n/LocaleSwitch.svelte';
@@ -39,7 +40,7 @@
   function join(e: Event) {
     e.preventDefault();
     if (!commitName()) return;
-    goto(`/play/${encodeURIComponent(roomId.trim() || 'main')}`);
+    goto(`${base}/play/${encodeURIComponent(roomId.trim() || 'main')}`);
   }
 
   function openCreate() {
@@ -53,7 +54,7 @@
   function onCreateSubmit({ roomId: id, config }: { roomId: string; config: RoomCreateConfig }) {
     stashPendingConfig(id, config);
     createOpen = false;
-    goto(`/play/${encodeURIComponent(id)}`);
+    goto(`${base}/play/${encodeURIComponent(id)}`);
   }
 </script>
 
@@ -152,7 +153,7 @@
           class="w-full"
           onclick={() => {
             if (displayName.trim()) saveDisplayName(displayName.trim());
-            goto('/lan/host');
+            goto(`${base}/lan/host`);
           }}
         >
           {t('home.lan.host')}
@@ -164,7 +165,7 @@
           class="w-full"
           onclick={() => {
             if (displayName.trim()) saveDisplayName(displayName.trim());
-            goto('/lan/join');
+            goto(`${base}/lan/join`);
           }}
         >
           {t('home.lan.join')}
@@ -175,7 +176,7 @@
 
   {#if netAvailable}
     <p class="mt-6 text-center text-xs tracking-wider opacity-60">
-      <a href="/lobby" class="underline decoration-gold/60 underline-offset-2 hover:text-gold"
+      <a href="{base}/lobby" class="underline decoration-gold/60 underline-offset-2 hover:text-gold"
         >{t('home.viewRooms')}</a
       >
     </p>

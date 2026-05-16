@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { base } from '$app/paths';
   import { Card } from '$lib/components/ui';
   import { t } from '$lib/i18n/locale.svelte';
   import type { RoomSummary } from '@avalon/game-core';
@@ -33,7 +34,7 @@
 
 <section>
   <a
-    href="/"
+    href={base || '/'}
     class="font-display inline-flex items-center gap-1 text-sm opacity-70 hover:opacity-100"
     >{t('lobby.back')}</a
   >
@@ -68,7 +69,7 @@
               </span>
             </span>
             <a
-              href="/play/{room.roomId}"
+              href="{base}/play/{room.roomId}"
               class="font-display inline-flex h-10 items-center rounded-md border border-gold/60 bg-gradient-to-b from-gold-bright to-gold px-4 text-sm font-medium tracking-wider text-ink uppercase shadow-[0_2px_0_rgba(0,0,0,0.25)] hover:from-[#e0b35a] hover:to-[#c89720]"
             >
               {t('lobby.join')}

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { base } from '$app/paths';
   import { t } from '$lib/i18n/locale.svelte';
   import { onMount } from 'svelte';
 
@@ -17,8 +18,8 @@
     };
   });
 
-  const isNetPlay = $derived(page.url.pathname.startsWith('/play/'));
-  const isLan = $derived(page.url.pathname.startsWith('/lan/'));
+  const isNetPlay = $derived(page.url.pathname.startsWith(`${base}/play/`));
+  const isLan = $derived(page.url.pathname.startsWith(`${base}/lan/`));
 </script>
 
 {#if !online}
@@ -30,7 +31,7 @@
       <p class="font-display tracking-wider uppercase">{t('offline.title')}</p>
       {#if isNetPlay}
         <p class="mt-0.5">
-          {t('offline.netPlay')}<a href="/lan/host" class="font-medium underline"
+          {t('offline.netPlay')}<a href="{base}/lan/host" class="font-medium underline"
             >{t('offline.netPlay.link')}</a
           >{t('offline.netPlay.tail')}
         </p>

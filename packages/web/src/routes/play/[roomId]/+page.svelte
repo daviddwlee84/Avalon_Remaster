@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { base } from '$app/paths';
   import PlayLayout from '$lib/components/game/PlayLayout.svelte';
   import { loadDisplayName, loadReconnect, takePendingConfig } from '$lib/storage';
   import { WsSession, buildRoomWsUrl } from '$lib/transport/ws.svelte';
@@ -25,7 +26,13 @@
 </svelte:head>
 
 {#if session}
-  <PlayLayout {session} {displayName} roomLabel="room {roomId}" reconnectRoomId={roomId} />
+  <PlayLayout
+    {session}
+    {displayName}
+    roomLabel="room {roomId}"
+    reconnectRoomId={roomId}
+    leaveHref={base || '/'}
+  />
 {:else}
   <p class="mt-12 text-center opacity-70">Loading…</p>
 {/if}
