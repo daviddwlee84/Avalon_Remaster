@@ -37,6 +37,15 @@ jobs:
           # To enable Net mode against an external WS server, override here:
           # PUBLIC_AVALON_WS_ORIGIN: wss://your-avalon-server.example
         run: bun run --filter '@avalon/web' build
+      - name: SPA fallback for GH Pages (copy index.html → 404.html)
+        # GH Pages serves /404.html for unknown paths. Without this, direct
+        # navigation to /Avalon_Remaster/lan/host or any sub-route returns a
+        # real 404 instead of hydrating the SvelteKit SPA shell. .nojekyll
+        # prevents GH Pages from filtering out files/dirs starting with _ —
+        # SvelteKit emits everything under _app/.
+        run: |
+          cp packages/web/build/index.html packages/web/build/404.html
+          touch packages/web/build/.nojekyll
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
