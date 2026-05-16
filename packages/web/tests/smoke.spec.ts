@@ -53,7 +53,7 @@ test('5 players can join, start, and receive role reveal', async ({ browser }) =
 
     // Dismiss role reveal on every page so we land in team_selection.
     for (const page of pages) {
-      await page.getByRole('button', { name: 'Got it' }).click();
+      await page.getByRole('button', { name: /I am ready/i }).click();
       await expect(page.getByText('Your role')).toBeHidden();
     }
 

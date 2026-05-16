@@ -20,7 +20,6 @@ for the maintenance workflow that agents should follow.
 ## P1
 
 Likely next batch — items you'd reach for if you sat down to work today.
-- [ ] **[L] Phase 2: UI beautification with shadcn-svelte** — Wire shadcn-svelte components, parchment-and-gold Tailwind theme, role-card flip animation, quest token strip, vote-reveal animation, captain crown, audio cues. Mobile responsive 320-1440px. → [research](backlog/phase-2-ui-beautification.md)
 - [ ] **[L] Phase 3: full role set + Lady of the Lake** — 8 roles, Mordred/Morgana/Percival/Oberon visibility plumbed through projectView property tests, distribution dialog in Create Room. Lady of the Lake as hard-interrupt phase between rounds 2/3/4 for 7+ players. Round-4 twoFailsRequired UI. → [research](backlog/phase-3-full-roles-lady.md)
 - [ ] **[XL] Phase 4: LAN mode via WebRTC DataChannel** — Host browser runs GameRoom in-process; joiner connects over RTCDataChannel with mDNS .local ICE candidates. QR-code SDP pairing + manual paste fallback. HostRoomBridge wraps GameRoom with peer routing table (local-loopback for host, DC for joiners). Highest-risk phase — 2-week budget. → [research](backlog/phase-4-lan-webrtc.md)
 
@@ -32,6 +31,7 @@ Worth doing, no rush.
 - [ ] **[L] Phase 7: reconnection grace and spectator mode** — Server holds seat 60s on close; reconnect via localStorage playerId token re-attaches and resends GameStateUpdate. Spectator role (?role=spectator) read-only, no knownAlignments, sees public game state only. → [research](backlog/phase-7-reconnect-spectators.md)
 - [ ] **[M] Expand Playwright e2e to full game flows** — Current smoke test stops after role-reveal. Add: complete 3-quest win → assassination → miss/hit Merlin; 5 consecutive rejections → evil wins; 3 failed quests → evil wins. Drive deterministically via X-Avalon-Seed header so outcomes are reproducible.
 - [ ] **[S] 30-minute Bun.serve WebSocket soak test** — Phase 1 risk item: Bun.serve close-frame handling has had subtle bugs. Run 5 players in reconnect loops for 30 minutes, watch for resource leaks or stuck rooms. Fallback if unstable: swap to hono/node-server + ws (same code outside src/index.ts entry).
+- [ ] **[M] Audio cues + Settings (sound on/off)** — Short SFX clips on vote-cast / quest-resolved / game-over. Gate behind a Settings drawer (shadcn-svelte Sheet + Tabs). Source CC0 audio (Freesound), credit in SOUNDS.md. Deferred from Phase 2 UI beautification because asset sourcing + a Settings surface is a separable mini-phase.
 
 ## P3
 
@@ -45,6 +45,8 @@ Needs a spike before committing to a real priority. Tag as `[?/Effort]`.
 - [ ] **[?/S] paraglide-js viability spike before Phase 6** — Stand up a 'hello'/'你好' two-locale hello world. Verify per-locale tree-shaking, runtime cost, SvelteKit integration smoothness. Fallback if rough: i18next + JSON bundles. Decision artifact: ADR in docs/.
 
 ## Done
+
+- ✅ [2026-05-16] [P1/L] Phase 2: UI beautification with shadcn-svelte — shadcn-svelte primitives, role-card flip, quest tokens, captain pulse, vote reveal + responsive layout; engine + Playwright smoke still green
 
 Recently shipped. When implementing an active item, in the same commit run:
 

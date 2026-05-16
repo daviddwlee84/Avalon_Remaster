@@ -2,17 +2,142 @@
 
 @theme {
   --color-parchment: #f5e9d3;
+  --color-parchment-deep: #e8d5ad;
   --color-ink: #1a0f00;
   --color-gold: #b8860b;
+  --color-gold-bright: #d4a64b;
   --color-blood: #8b0000;
   --color-evil: #4b0000;
   --color-good: #1e3a5f;
+
+  --font-display: 'Cinzel', 'IM Fell English', 'Cardo', serif;
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+
+  --animate-fade-in: fade-in 200ms ease-out;
+  --animate-fade-out: fade-out 150ms ease-in;
+  --animate-pop-in: pop-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-pop-out: pop-out 150ms ease-in;
+  --animate-flip-in: flip-in 480ms cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-crown-pulse: crown-pulse 1800ms ease-in-out infinite;
+  --animate-token-reveal: token-reveal 520ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+@keyframes pop-out {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+}
+@keyframes flip-in {
+  0% {
+    transform: rotateY(180deg);
+  }
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+@keyframes crown-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 2px rgba(184, 134, 11, 0.6));
+  }
+  50% {
+    transform: scale(1.12);
+    filter: drop-shadow(0 0 8px rgba(184, 134, 11, 0.95));
+  }
+}
+@keyframes token-reveal {
+  0% {
+    opacity: 0;
+    transform: rotateY(180deg) scale(0.6);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: rotateY(0deg) scale(1);
+  }
 }
 
 html,
 body {
-  background: var(--color-parchment);
+  background:
+    radial-gradient(ellipse at top, rgba(184, 134, 11, 0.08), transparent 60%),
+    radial-gradient(ellipse at bottom, rgba(139, 0, 0, 0.06), transparent 60%),
+    var(--color-parchment);
   color: var(--color-ink);
   min-height: 100vh;
-  font-family: system-ui, -apple-system, 'Segoe UI', 'Noto Sans TC', sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: 0.02em;
+}
+
+/* Card flip primitives — used by role-reveal card and vote tokens. */
+.flip-3d {
+  perspective: 1000px;
+}
+.flip-3d-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 480ms cubic-bezier(0.16, 1, 0.3, 1);
+  transform-style: preserve-3d;
+}
+.flip-3d-inner.is-flipped {
+  transform: rotateY(180deg);
+}
+.flip-3d-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.flip-3d-face-back {
+  transform: rotateY(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-3d-inner {
+    transition: none;
+  }
 }

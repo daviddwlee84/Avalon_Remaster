@@ -1,5 +1,10 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { Button, Card, Dialog, DialogContent } from '$lib/components/ui';
+  import PlayerTile from '$lib/components/game/PlayerTile.svelte';
+  import QuestTokenStrip from '$lib/components/game/QuestTokenStrip.svelte';
+  import RoleCardReveal from '$lib/components/game/RoleCardReveal.svelte';
+  import VoteRevealStrip from '$lib/components/game/VoteRevealStrip.svelte';
   import { GameStore } from '$lib/game-store.svelte';
   import { loadDisplayName } from '$lib/storage';
   import { WsSession, buildRoomWsUrl } from '$lib/transport/ws.svelte';
@@ -12,6 +17,7 @@
   let selectedTeam = $state<string[]>([]);
   let chatInput = $state('');
   let displayName = $state('Player');
+  let chatOpen = $state(false);
 
   onMount(() => {
     displayName = loadDisplayName() || 'Player';
@@ -34,10 +40,25 @@
   const iAmCaptain = $derived(captain?.id === myPlayerId);
   const iAmOnTeam = $derived(me?.isOnProposedTeam ?? false);
 
+  // Quest team sizes table — for QuestTokenStrip header. Source: rules.ts:13-20.
+  const TEAM_SIZES: Record<number, readonly number[]> = {
+    5: [2, 3, 2, 3, 3],
+    6: [2, 3, 4, 3, 4],
+    7: [2, 3, 3, 4, 4],
+    8: [3, 4, 4, 5, 5],
+    9: [3, 4, 4, 5, 5],
+    10: [3, 4, 4, 5, 5],
+  };
+  const teamSizes = $derived(
+    view ? (TEAM_SIZES[view.players.length] ?? [0, 0, 0, 0, 0]) : [0, 0, 0, 0, 0],
+  );
+
+  // Captain-only: cap team picks to the requested size, but don't show selection UI for non-captains.
   function toggleTeamMember(pid: string) {
+    if (!view) return;
     if (selectedTeam.includes(pid)) {
       selectedTeam = selectedTeam.filter((x) => x !== pid);
-    } else if (view && selectedTeam.length < view.teamSizeRequired) {
+    } else if (selectedTeam.length < view.teamSizeRequired) {
       selectedTeam = [...selectedTeam, pid];
     }
   }
@@ -85,280 +106,332 @@
       .replace('assassin missed', 'Assassin missed Merlin');
     return `${who} — ${why}`;
   }
+
+  // Evil roles (the only ones allowed to vote fail). Mirrors play-page Phase-1 logic.
+  const EVIL_ROLES = new Set(['Assassin', 'Morgana', 'Mordred', 'Oberon', 'Minion']);
+  const iCanFailQuest = $derived(!!view?.myRole && EVIL_ROLES.has(view.myRole));
 </script>
 
 <svelte:head>
   <title>Room {roomId} — Avalon</title>
 </svelte:head>
 
-<a href="/" class="text-sm underline">← Leave</a>
+<a href="/" class="font-display inline-flex items-center gap-1 text-sm opacity-70 hover:opacity-100"
+  >← Leave</a
+>
 
 {#if !view}
-  <p class="mt-6 opacity-70">Connecting to room <strong>{roomId}</strong>…</p>
-  <p class="mt-2 text-xs opacity-60">Connection: {session?.connState ?? 'init'}</p>
-{:else}
-  <div class="mt-2 mb-4 flex items-baseline justify-between">
-    <h1 class="text-2xl font-bold">Room {view.roomId}</h1>
-    <span class="text-xs opacity-60">
-      You: {displayName} ({me?.id.slice(0, 6)}) — phase: <strong>{view.phase}</strong>
-    </span>
+  <div class="mt-12 text-center">
+    <p class="font-display text-lg tracking-wide opacity-80">
+      Connecting to room <strong>{roomId}</strong>…
+    </p>
+    <p class="mt-2 text-xs opacity-60">Connection: {session?.connState ?? 'init'}</p>
   </div>
+{:else}
+  <header class="mt-3 mb-4 flex items-baseline justify-between gap-3">
+    <h1 class="font-display text-3xl font-bold tracking-wide sm:text-4xl">
+      Room <span class="text-gold">{view.roomId}</span>
+    </h1>
+    <span class="text-right text-xs opacity-60">
+      <span class="block sm:inline">You: {displayName}</span>
+      <span class="hidden sm:inline"> · </span>
+      <span class="block sm:inline">
+        Phase: <strong class="font-display tracking-wider uppercase">{view.phase}</strong>
+      </span>
+    </span>
+  </header>
 
-  <!-- Players list -->
-  <ul class="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5">
-    {#each view.players as p (p.id)}
-      {@const align = view.knownAlignments[p.id]}
-      <li
-        class="rounded border px-2 py-1 text-sm"
-        class:border-blood={align === 'evil'}
-        class:border-gold={align === 'merlin-like'}
-        class:border-black={!align}
-        class:opacity-50={!p.connected}
-        class:bg-yellow-100={p.isCaptain}
-      >
-        <div class="font-medium">
-          {p.displayName}
-          {#if p.id === myPlayerId}<span class="text-xs opacity-60">(you)</span>{/if}
-        </div>
-        <div class="text-xs opacity-70">
-          {#if p.isCaptain}👑 Captain{/if}
-          {#if p.isOnProposedTeam}🛡 On team{/if}
-          {#if p.isLadyOfTheLakeHolder}🌊 Lady{/if}
-          {#if align}— knownAs: {align}{/if}
-        </div>
-      </li>
-    {/each}
-  </ul>
-
-  <!-- Quest history strip -->
-  <div class="mb-4">
-    <div class="text-xs opacity-60">Quest history</div>
-    <div class="flex gap-1">
-      {#each Array(5) as _, i (i)}
-        {@const q = view.questHistory[i]}
-        <div
-          class="flex h-10 w-10 items-center justify-center rounded border text-xs"
-          class:bg-green-200={q?.outcome === 'success'}
-          class:bg-red-200={q?.outcome === 'fail'}
-          class:bg-white={!q}
+  <div class="grid gap-4 lg:grid-cols-[1fr_minmax(0,360px)]">
+    <!-- ───────────── Main column ───────────── -->
+    <div class="space-y-4">
+      <!-- Players -->
+      <Card class="!p-3">
+        <h2
+          class="font-display mb-3 text-sm tracking-[0.2em] opacity-70 uppercase"
+          data-testid="players-heading"
         >
-          {#if q}
-            {q.outcome === 'success' ? '✓' : '✗'}
-            {#if q.questVoteCounts.fails > 0}
-              <span class="ml-0.5 text-[10px]">{q.questVoteCounts.fails}f</span>
+          Players · {view.players.length}/10
+        </h2>
+        <ul class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+          {#each view.players as p (p.id)}
+            <li>
+              <PlayerTile
+                player={p}
+                isMe={p.id === myPlayerId}
+                alignment={view.knownAlignments[p.id]}
+              />
+            </li>
+          {/each}
+        </ul>
+      </Card>
+
+      <!-- Phase panel -->
+      <Card class="border-gold/30 bg-parchment-deep/30">
+        {#if view.phase === 'lobby'}
+          <h2 class="font-display mb-2 text-xl font-bold">Lobby</h2>
+          <p class="text-sm opacity-70">
+            {view.players.length} player{view.players.length === 1 ? '' : 's'} seated.
+            {#if isHost}<span class="font-display text-gold">You are the host.</span>{/if}
+          </p>
+          {#if isHost}
+            <div class="mt-3">
+              <Button
+                variant="gold"
+                size="lg"
+                disabled={view.players.length < 5}
+                onclick={startGame}
+              >
+                Start game · {view.players.length}/5
+              </Button>
+            </div>
+          {:else}
+            <p class="mt-2 text-sm opacity-60">Waiting for host to start…</p>
+          {/if}
+        {:else if view.phase === 'team_selection'}
+          <h2 class="font-display mb-2 text-xl font-bold">
+            Captain {captain?.displayName} proposes
+          </h2>
+          {#if iAmCaptain}
+            <p class="text-sm opacity-70">
+              Pick exactly {view.teamSizeRequired} players. Selected: <span class="font-medium"
+                >{selectedTeam.length}/{view.teamSizeRequired}</span
+              >
+            </p>
+            <ul class="my-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+              {#each view.players as p (p.id)}
+                <li>
+                  <PlayerTile
+                    player={p}
+                    isMe={p.id === myPlayerId}
+                    alignment={view.knownAlignments[p.id]}
+                    selectable
+                    selected={selectedTeam.includes(p.id)}
+                    onClick={() => toggleTeamMember(p.id)}
+                  />
+                </li>
+              {/each}
+            </ul>
+            <Button
+              variant="gold"
+              size="lg"
+              disabled={selectedTeam.length !== view.teamSizeRequired}
+              onclick={proposeTeam}
+            >
+              Propose team
+            </Button>
+          {:else}
+            <p class="text-sm opacity-70">
+              Waiting for captain <strong>{captain?.displayName}</strong> to pick a team of
+              {view.teamSizeRequired}…
+            </p>
+          {/if}
+        {:else if view.phase === 'team_vote'}
+          <h2 class="font-display mb-2 text-xl font-bold">Vote on the proposal</h2>
+          <p class="mb-3 text-sm">
+            <span class="opacity-70">Proposed team:</span>
+            <strong>
+              {view.proposedTeam
+                .map((id) => view.players.find((p) => p.id === id)?.displayName ?? id.slice(0, 6))
+                .join(', ')}
+            </strong>
+          </p>
+          {#if view.approveVotesRevealed}
+            <VoteRevealStrip votes={view.approveVotesRevealed} players={view.players} />
+          {:else if view.myPendingApproveVote === null}
+            <div class="flex flex-wrap gap-3">
+              <Button variant="approve" size="lg" onclick={() => voteTeam(true)}>✓ Approve</Button>
+              <Button variant="reject" size="lg" onclick={() => voteTeam(false)}>✗ Reject</Button>
+            </div>
+          {:else}
+            <p class="text-sm opacity-70">
+              You voted: <strong class="font-display tracking-wider uppercase"
+                >{view.myPendingApproveVote ? 'Approve' : 'Reject'}</strong
+              >. Waiting for others…
+            </p>
+          {/if}
+          <p class="mt-3 text-xs opacity-60">
+            Votes in: {Object.values(view.approveVoteSubmitted).filter(Boolean).length}/{view
+              .players.length}
+          </p>
+        {:else if view.phase === 'quest'}
+          <h2 class="font-display mb-2 text-xl font-bold">Quest underway</h2>
+          {#if iAmOnTeam}
+            {#if view.myPendingQuestVote === null}
+              <p class="text-sm">You are on this quest. Vote secretly:</p>
+              <div class="mt-3 flex flex-wrap gap-3">
+                <Button variant="success" size="lg" onclick={() => voteQuest(true)}>
+                  ✓ Success
+                </Button>
+                {#if iCanFailQuest}
+                  <Button variant="fail" size="lg" onclick={() => voteQuest(false)}>
+                    ✗ Fail
+                  </Button>
+                {/if}
+              </div>
+            {:else}
+              <p class="text-sm opacity-70">
+                You voted: <strong class="font-display tracking-wider uppercase"
+                  >{view.myPendingQuestVote}</strong
+                >. Waiting for the rest of the team…
+              </p>
             {/if}
           {:else}
-            R{i + 1}
+            <p class="text-sm opacity-70">
+              Quest team is voting. Submitted: {Object.values(view.questVoteSubmitted).filter(
+                Boolean,
+              ).length}/{view.proposedTeam.length}
+            </p>
           {/if}
-        </div>
-      {/each}
+        {:else if view.phase === 'assassination'}
+          <h2 class="font-display mb-2 text-xl font-bold text-blood">Assassination</h2>
+          {#if view.myRole === 'Assassin'}
+            <p class="text-sm">
+              Good has won 3 quests. Choose your target — strike Merlin and evil still wins.
+            </p>
+            <ul class="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {#each view.players.filter((p) => p.id !== myPlayerId) as p (p.id)}
+                <li>
+                  <PlayerTile
+                    player={p}
+                    isMe={false}
+                    alignment={view.knownAlignments[p.id]}
+                    selectable
+                    onClick={() => nominateAssassin(p.id)}
+                  />
+                </li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="text-sm opacity-70">Waiting for the Assassin to pick their target…</p>
+          {/if}
+        {:else if view.phase === 'finished'}
+          <h2 class="font-display mb-2 text-xl font-bold">Game over</h2>
+          <p
+            class="font-display text-2xl font-bold tracking-wide"
+            class:text-good={view.winner === 'good'}
+            class:text-blood={view.winner === 'evil'}
+          >
+            {winLabel(view.winner, view.winReason)}
+          </p>
+          <a
+            href="/"
+            class="font-display mt-3 inline-block text-sm tracking-wider underline uppercase opacity-70 hover:opacity-100"
+            >Back to home</a
+          >
+        {:else if view.phase === 'role_reveal'}
+          <p class="text-sm opacity-70">Roles dealt — see your card.</p>
+        {:else if view.phase === 'lady_of_lake'}
+          <p class="text-sm opacity-70">Lady of the Lake — coming in Phase 3.</p>
+        {/if}
+      </Card>
     </div>
-    <div class="mt-1 text-xs opacity-60">
-      Round {view.currentRound} · team size: {view.teamSizeRequired || '-'} ·
-      rejections: {view.consecutiveRejections}/5
-      {#if view.twoFailsRequired}· <span class="text-blood font-medium">2 fails to fail</span>{/if}
-    </div>
-  </div>
 
-  <!-- Phase-specific UI -->
-  <section class="mb-4 rounded-lg border border-black/10 bg-white/40 p-4">
-    {#if view.phase === 'lobby'}
-      <h2 class="mb-2 text-lg font-bold">Lobby</h2>
-      <p class="text-sm opacity-70">
-        {view.players.length} player{view.players.length === 1 ? '' : 's'} waiting.
-        {#if isHost}You are the host.{/if}
-      </p>
-      {#if isHost}
-        <button
-          class="mt-2 rounded bg-black px-4 py-2 text-white disabled:opacity-30"
-          disabled={view.players.length < 5}
-          onclick={startGame}
-        >
-          Start game ({view.players.length}/5+)
-        </button>
-      {:else}
-        <p class="mt-2 text-sm opacity-60">Waiting for host to start…</p>
-      {/if}
-    {:else if view.phase === 'team_selection'}
-      <h2 class="mb-2 text-lg font-bold">Captain selects team</h2>
-      {#if iAmCaptain}
-        <p class="text-sm opacity-70">
-          Pick exactly {view.teamSizeRequired} players. Selected: {selectedTeam.length}/{view.teamSizeRequired}
-        </p>
-        <div class="my-2 flex flex-wrap gap-1">
-          {#each view.players as p (p.id)}
-            <button
-              class="rounded border px-2 py-1 text-sm"
-              class:bg-black={selectedTeam.includes(p.id)}
-              class:text-white={selectedTeam.includes(p.id)}
-              onclick={() => toggleTeamMember(p.id)}
-            >
-              {p.displayName}
-            </button>
-          {/each}
-        </div>
-        <button
-          class="rounded bg-black px-4 py-2 text-white disabled:opacity-30"
-          disabled={selectedTeam.length !== view.teamSizeRequired}
-          onclick={proposeTeam}
-        >
-          Propose team
-        </button>
-      {:else}
-        <p class="text-sm opacity-70">
-          Waiting for captain <strong>{captain?.displayName}</strong> to pick a team of {view.teamSizeRequired}…
-        </p>
-      {/if}
-    {:else if view.phase === 'team_vote'}
-      <h2 class="mb-2 text-lg font-bold">Vote on team</h2>
-      <p class="mb-2 text-sm">
-        Proposed: {view.proposedTeam
-          .map((id) => view.players.find((p) => p.id === id)?.displayName ?? id.slice(0, 6))
-          .join(', ')}
-      </p>
-      {#if view.myPendingApproveVote === null}
-        <div class="flex gap-2">
-          <button class="rounded bg-green-700 px-4 py-2 text-white" onclick={() => voteTeam(true)}>
-            Approve
-          </button>
-          <button class="rounded bg-red-700 px-4 py-2 text-white" onclick={() => voteTeam(false)}>
-            Reject
-          </button>
-        </div>
-      {:else}
-        <p class="text-sm opacity-70">
-          You voted: <strong>{view.myPendingApproveVote ? 'Approve' : 'Reject'}</strong>. Waiting for others…
-        </p>
-      {/if}
-      <div class="mt-2 text-xs opacity-60">
-        Votes in: {Object.values(view.approveVoteSubmitted).filter(Boolean).length}/{view.players.length}
-      </div>
-    {:else if view.phase === 'quest'}
-      <h2 class="mb-2 text-lg font-bold">Quest</h2>
-      {#if iAmOnTeam}
-        {#if view.myPendingQuestVote === null}
-          <p class="text-sm">You are on this quest. Vote secretly:</p>
-          <div class="mt-2 flex gap-2">
-            <button
-              class="rounded bg-green-700 px-4 py-2 text-white"
-              onclick={() => voteQuest(true)}
-            >
-              Success
-            </button>
-            {#if me?.id && view.myRole && (view.myRole === 'Assassin' || view.myRole === 'Morgana' || view.myRole === 'Mordred' || view.myRole === 'Oberon' || view.myRole === 'Minion')}
-              <button
-                class="rounded bg-red-700 px-4 py-2 text-white"
-                onclick={() => voteQuest(false)}
-              >
-                Fail
-              </button>
-            {/if}
+    <!-- ───────────── Sidebar ───────────── -->
+    <aside class="space-y-4">
+      <Card class="!p-3">
+        <h2 class="font-display mb-3 text-sm tracking-[0.2em] opacity-70 uppercase">Quests</h2>
+        <QuestTokenStrip
+          history={view.questHistory}
+          playerCount={view.players.length}
+          {teamSizes}
+          currentRound={view.currentRound}
+        />
+        <div class="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
+          <div class="rounded-md border border-ink/10 bg-parchment/60 py-1.5">
+            <div class="font-display text-lg leading-none">{view.currentRound}/5</div>
+            <div class="text-[10px] tracking-wider opacity-60 uppercase">Round</div>
           </div>
-        {:else}
-          <p class="text-sm opacity-70">
-            You voted: <strong>{view.myPendingQuestVote}</strong>. Waiting for the rest of the team…
+          <div class="rounded-md border border-ink/10 bg-parchment/60 py-1.5">
+            <div class="font-display text-lg leading-none">{view.teamSizeRequired || '–'}</div>
+            <div class="text-[10px] tracking-wider opacity-60 uppercase">Team size</div>
+          </div>
+          <div
+            class="rounded-md border border-ink/10 bg-parchment/60 py-1.5"
+            class:!border-blood={view.consecutiveRejections >= 3}
+          >
+            <div
+              class="font-display text-lg leading-none"
+              class:text-blood={view.consecutiveRejections >= 3}
+            >
+              {view.consecutiveRejections}/5
+            </div>
+            <div class="text-[10px] tracking-wider opacity-60 uppercase">Rejections</div>
+          </div>
+        </div>
+        {#if view.twoFailsRequired}
+          <p class="mt-2 text-center text-xs font-medium tracking-wider text-blood uppercase">
+            ⚠ 2 fails required to fail this round
           </p>
         {/if}
-      {:else}
-        <p class="text-sm opacity-70">
-          Quest team is voting. Submitted: {Object.values(view.questVoteSubmitted).filter(Boolean)
-            .length}/{view.proposedTeam.length}
-        </p>
-      {/if}
-    {:else if view.phase === 'assassination'}
-      <h2 class="mb-2 text-lg font-bold">Assassination</h2>
-      {#if view.myRole === 'Assassin'}
-        <p class="text-sm">Good won 3 quests. Choose a target to assassinate. Hit Merlin → evil wins.</p>
-        <div class="mt-2 flex flex-wrap gap-1">
-          {#each view.players.filter((p) => p.id !== myPlayerId) as p (p.id)}
-            <button
-              class="rounded border border-black/20 bg-white px-2 py-1 text-sm hover:bg-black hover:text-white"
-              onclick={() => nominateAssassin(p.id)}
-            >
-              {p.displayName}
-            </button>
-          {/each}
-        </div>
-      {:else}
-        <p class="text-sm opacity-70">Waiting for the Assassin to pick their target…</p>
-      {/if}
-    {:else if view.phase === 'finished'}
-      <h2 class="mb-2 text-lg font-bold">Game over</h2>
-      <p
-        class="text-xl font-bold"
-        class:text-good={view.winner === 'good'}
-        class:text-blood={view.winner === 'evil'}
-      >
-        {winLabel(view.winner, view.winReason)}
-      </p>
-      <a href="/" class="mt-2 inline-block underline">Back to home</a>
-    {:else if view.phase === 'role_reveal'}
-      <p class="text-sm opacity-70">Roles dealt…</p>
-    {:else if view.phase === 'lady_of_lake'}
-      <p class="text-sm opacity-70">Lady of the Lake — coming in Phase 3.</p>
-    {/if}
-  </section>
+      </Card>
 
-  <!-- Chat -->
-  <section class="rounded-lg border border-black/10 bg-white/40 p-4">
-    <h2 class="mb-2 text-sm font-bold">Chat</h2>
-    <ul class="mb-2 max-h-40 space-y-1 overflow-y-auto text-sm">
-      {#each store?.chat ?? [] as line (line.tsMs + ':' + line.fromPlayerId)}
-        <li>
-          <strong>{line.fromDisplayName}:</strong>
-          {line.text}
-        </li>
-      {/each}
-    </ul>
-    <form class="flex gap-2" onsubmit={sendChat}>
-      <input
-        class="flex-1 rounded border border-black/20 bg-white px-2 py-1 text-sm"
-        bind:value={chatInput}
-        maxlength="256"
-        placeholder="Type a message…"
-      />
-      <button type="submit" class="rounded bg-black px-3 py-1 text-sm text-white">Send</button>
-    </form>
-  </section>
-
-  <!-- Role reveal modal -->
-  {#if store?.showRoleReveal && view.myRole}
-    <div
-      class="fixed inset-0 flex items-center justify-center bg-black/70 p-4"
-      role="dialog"
-    >
-      <div class="max-w-sm rounded-lg bg-white p-6 text-center">
-        <p class="text-sm opacity-60">Your role</p>
-        <h2 class="my-2 text-3xl font-bold">{view.myRole}</h2>
-        {#if Object.keys(view.knownAlignments).length > 0}
-          <p class="text-sm">You see:</p>
-          <ul class="text-sm">
-            {#each Object.entries(view.knownAlignments) as [pid, what] (pid)}
-              <li>
-                <strong>{view.players.find((p) => p.id === pid)?.displayName}</strong>
-                — {what}
-              </li>
-            {/each}
-          </ul>
-        {/if}
+      <Card class="!p-0">
         <button
-          class="mt-4 rounded bg-black px-4 py-2 text-white"
-          onclick={() => store?.dismissRoleReveal()}
+          type="button"
+          class="font-display flex w-full items-baseline justify-between px-4 py-3 text-sm tracking-[0.2em] uppercase"
+          onclick={() => (chatOpen = !chatOpen)}
+          aria-expanded={chatOpen}
         >
-          Got it
+          <span class="opacity-70">Chat · {store?.chat.length ?? 0}</span>
+          <span class="text-xs opacity-50">{chatOpen ? '▾' : '▸'}</span>
         </button>
-      </div>
-    </div>
+        {#if chatOpen}
+          <div class="border-t border-ink/10 p-3">
+            <ul class="mb-2 max-h-48 space-y-1 overflow-y-auto text-sm">
+              {#each store?.chat ?? [] as line (line.tsMs + ':' + line.fromPlayerId)}
+                <li class="leading-snug">
+                  <strong class="text-gold">{line.fromDisplayName}:</strong>
+                  {line.text}
+                </li>
+              {/each}
+              {#if (store?.chat.length ?? 0) === 0}
+                <li class="text-xs opacity-50">No messages yet.</li>
+              {/if}
+            </ul>
+            <form class="flex gap-2" onsubmit={sendChat}>
+              <input
+                class="flex-1 rounded border border-ink/30 bg-parchment/80 px-2 py-1.5 text-sm placeholder:opacity-50 focus-visible:ring-2 focus-visible:ring-gold/60 focus-visible:outline-none"
+                bind:value={chatInput}
+                maxlength="256"
+                placeholder="Type a message…"
+              />
+              <Button type="submit" size="sm">Send</Button>
+            </form>
+          </div>
+        {/if}
+      </Card>
+    </aside>
+  </div>
+
+  <!-- Role-reveal Dialog -->
+  {#if view.myRole}
+    <Dialog
+      open={store?.showRoleReveal ?? false}
+      onOpenChange={(o) => {
+        if (!o) store?.dismissRoleReveal();
+      }}
+    >
+      <DialogContent>
+        <RoleCardReveal
+          role={view.myRole}
+          knownAlignments={view.knownAlignments}
+          players={view.players}
+          onDismiss={() => store?.dismissRoleReveal()}
+        />
+      </DialogContent>
+    </Dialog>
   {/if}
 
   <!-- Toasts -->
-  <div class="fixed right-4 bottom-4 space-y-2">
+  <div class="fixed right-4 bottom-4 z-40 space-y-2">
     {#each store?.toasts ?? [] as t (t.id)}
       <div
-        class="rounded px-3 py-2 text-sm shadow-lg"
-        class:bg-red-700={t.kind === 'error'}
-        class:bg-black={t.kind === 'info'}
-        class:text-white={true}
+        class="font-display rounded-lg border px-4 py-2 text-sm tracking-wider shadow-lg uppercase"
+        class:border-blood={t.kind === 'error'}
+        class:bg-blood={t.kind === 'error'}
+        class:text-parchment={true}
+        class:border-ink={t.kind !== 'error'}
+        class:bg-ink={t.kind !== 'error'}
       >
         {t.text}
       </div>

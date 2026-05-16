@@ -15,7 +15,11 @@
   },
   "dependencies": {
     "@avalon/game-core": "workspace:*",
-    "@avalon/protocol": "workspace:*"
+    "@avalon/protocol": "workspace:*",
+    "bits-ui": "^2.18.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.6.0",
+    "tailwind-variants": "^3.2.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.1",
