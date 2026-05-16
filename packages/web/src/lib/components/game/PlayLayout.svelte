@@ -131,12 +131,23 @@
   const iCanFailQuest = $derived(!!view?.myRole && EVIL_ROLES.has(view.myRole));
 </script>
 
-<a
-  href={leaveHref}
-  class="font-display inline-flex items-center gap-1 text-sm opacity-70 hover:opacity-100"
->
-  {t('play.leave')}
-</a>
+<div class="flex items-baseline justify-between gap-2">
+  <a
+    href={leaveHref}
+    class="font-display inline-flex items-center gap-1 text-sm opacity-70 hover:opacity-100"
+  >
+    {t('play.leave')}
+  </a>
+  <a
+    href="{leaveHref.replace(/\/$/, '')}/help"
+    target="_blank"
+    rel="noopener"
+    class="font-display inline-flex items-center gap-1 text-xs opacity-70 hover:opacity-100"
+    title={t('help.title')}
+  >
+    {t('help.button')}
+  </a>
+</div>
 
 {#if !view}
   <div class="mt-12 text-center">

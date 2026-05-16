@@ -193,17 +193,20 @@
     </div>
   </Card>
 
-  {#if netAvailable}
-    <p class="mt-6 text-center text-xs tracking-wider opacity-60">
+  <p class="mt-6 text-center text-xs tracking-wider opacity-60">
+    {#if netAvailable}
       <a href="{base}/lobby" class="underline decoration-gold/60 underline-offset-2 hover:text-gold"
         >{t('home.viewRooms')}</a
       >
-    </p>
-  {:else}
-    <p class="mt-6 text-center text-xs tracking-wider opacity-60">
+      <span class="mx-2 opacity-50">·</span>
+    {:else}
       Net mode requires a server. This deploy is LAN-only.
-    </p>
-  {/if}
+      <span class="mx-2 opacity-50">·</span>
+    {/if}
+    <a href="{base}/help" class="underline decoration-gold/60 underline-offset-2 hover:text-gold"
+      >{t('help.button')}</a
+    >
+  </p>
 </section>
 
 <Dialog

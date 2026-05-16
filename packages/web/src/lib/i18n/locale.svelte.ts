@@ -23,7 +23,9 @@ class LocaleStore {
       localStorage.setItem(STORAGE_KEY, next);
     }
     if (typeof document !== 'undefined') {
-      document.documentElement.lang = next === 'zh-TW' ? 'zh-TW' : 'en';
+      // Use the BCP-47 tag verbatim — browsers + screen readers know
+      // zh-TW vs zh-CN affects glyph selection and TTS voice.
+      document.documentElement.lang = next;
     }
   }
 }

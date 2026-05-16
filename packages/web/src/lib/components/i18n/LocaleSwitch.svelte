@@ -22,7 +22,11 @@
       aria-pressed={localeStore.current === loc}
       onclick={() => localeStore.setLocale(loc)}
     >
-      {loc === 'zh-TW' ? t('home.locale.zh') : t('home.locale.en')}
+      {loc === 'zh-TW'
+        ? t('home.locale.zh')
+        : loc === 'zh-CN'
+          ? t('home.locale.zhCn')
+          : t('home.locale.en')}
     </button>
   {/each}
 </div>
