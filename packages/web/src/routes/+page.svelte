@@ -13,21 +13,40 @@
   let roomId = $state('main');
   let createOpen = $state(false);
   /**
-   * Net mode requires a Bun WS server. On a GH Pages deploy (or any static
-   * host) with no `PUBLIC_AVALON_WS_ORIGIN` baked in, hide Net mode entries —
-   * leaving Net mode visible would silently fail and confuse first-time
-   * users. localhost dev is the escape hatch.
+   * Net mode requires a Bun WS server. Three ways it gets enabled:
+   * 1. Build-time PUBLIC_AVALON_WS_ORIGIN baked in (the GH Pages →
+   *    cloud-WS pattern: bundle knows where to dial).
+   * 2. Running on localhost — dev `bun run dev:server` is on :3000.
+   * 3. Same-origin /health probe returns 200 — the self-hosted Docker /
+   *    Azure deploy serves the SvelteKit bundle AND the WS server from
+   *    one origin, so the bundle can just dial its current host.
+   * Default false so the flash-of-Net-mode-then-hide on Pages doesn't
+   * happen; the probe flips it on the rare same-origin server case.
    */
-  let netAvailable = $state(true);
+  let netAvailable = $state(false);
 
-  onMount(() => {
+  onMount(async () => {
     displayName = loadDisplayName();
     const envOrigin =
       (import.meta as unknown as { env?: Record<string, string | undefined> }).env
         ?.PUBLIC_AVALON_WS_ORIGIN ?? '';
     const isLocalhost =
       window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    netAvailable = Boolean(envOrigin) || isLocalhost;
+    if (envOrigin || isLocalhost) {
+      netAvailable = true;
+      return;
+    }
+    // Same-origin probe — short timeout so a slow / hostile network doesn't
+    // hold the home page hostage. GH Pages 404s, self-hosted 200s.
+    try {
+      const ctl = new AbortController();
+      const t = setTimeout(() => ctl.abort(), 2500);
+      const res = await fetch(`${base}/health`, { signal: ctl.signal });
+      clearTimeout(t);
+      netAvailable = res.ok;
+    } catch {
+      netAvailable = false;
+    }
   });
 
   function commitName(): boolean {
