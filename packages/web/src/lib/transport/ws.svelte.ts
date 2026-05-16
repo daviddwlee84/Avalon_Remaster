@@ -18,6 +18,15 @@ export class WsSession implements Session, Transport {
   private ws: WebSocket;
   state: ConnState = $state('connecting');
   private readonly handlers = new Set<ServerMsgHandler>();
+  /**
+   * Buffer for ServerMsgs that arrive before any subscriber has called
+   * subscribe(). Without this, messages dispatched between the WsSession
+   * constructor (called by the route) and the first GameStore.subscribe
+   * (called when PlayLayout mounts) are silently dropped — and the user
+   * sees a frozen "Connecting…" / Connection:open state because Welcome +
+   * RoomJoined arrived during that ~100ms gap. Mirrors WebRtcSession.
+   */
+  private readonly preSubscribeQueue: ServerMsg[] = [];
 
   constructor(url: string) {
     this.ws = new WebSocket(url);
@@ -40,6 +49,10 @@ export class WsSession implements Session, Transport {
       }
       const msg = parseServerMsg(parsed);
       if (!msg) return;
+      if (this.handlers.size === 0) {
+        this.preSubscribeQueue.push(msg);
+        return;
+      }
       for (const h of this.handlers) h(msg);
     });
   }
@@ -68,6 +81,11 @@ export class WsSession implements Session, Transport {
 
   subscribe(handler: ServerMsgHandler): () => void {
     this.handlers.add(handler);
+    // Drain anything that arrived before the first subscriber landed.
+    if (this.preSubscribeQueue.length > 0) {
+      const drained = this.preSubscribeQueue.splice(0);
+      for (const msg of drained) handler(msg);
+    }
     return () => {
       this.handlers.delete(handler);
     };

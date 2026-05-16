@@ -53,7 +53,16 @@ const server = Bun.serve<WsData>({
     const url = new URL(req.url);
 
     // WebSocket upgrade paths.
-    if (url.pathname === '/ws' || url.pathname.startsWith('/ws/') || url.pathname === '/lobby') {
+    //
+    // `/lobby` is special: it doubles as the SvelteKit page route. We only
+    // grab it for the WS upgrade if the request actually carries an
+    // `Upgrade: websocket` header — a plain browser navigation hits this
+    // path too and must fall through to the static handler below.
+    const wantsWs = req.headers.get('upgrade')?.toLowerCase() === 'websocket';
+    if (
+      wantsWs &&
+      (url.pathname === '/ws' || url.pathname.startsWith('/ws/') || url.pathname === '/lobby')
+    ) {
       const isLobby = url.pathname === '/lobby';
       const roomId = isLobby ? '' : url.pathname === '/ws' ? 'main' : url.pathname.slice(4);
       const displayName = url.searchParams.get('name') ?? 'Player';
