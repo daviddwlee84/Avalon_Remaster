@@ -25,7 +25,18 @@ export type ClientMsg =
  * Every state-carrying message ships a {@link PlayerView}, pre-projected per recipient.
  */
 export type ServerMsg =
-  | { type: 'Welcome'; protocol: number; peerId: PeerId; yourPlayerId: PlayerId }
+  | {
+      type: 'Welcome';
+      protocol: number;
+      peerId: PeerId;
+      yourPlayerId: PlayerId;
+      /**
+       * Reconnect token bound to yourPlayerId for this room. Stash in
+       * localStorage; replay via the WS query (?token=…&playerId=…) within
+       * the server's grace window to resume the same seat.
+       */
+      reconnectToken: string;
+    }
   | { type: 'RoomList'; rooms: RoomSummary[] }
   | { type: 'RoomJoined'; state: PlayerView }
   | { type: 'GameStateUpdate'; state: PlayerView }

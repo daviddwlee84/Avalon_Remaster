@@ -14,6 +14,8 @@ interface WsData {
   isLobby: boolean;
   /** Config supplied via WS query params; only honoured if the room is being created fresh. */
   desiredConfig: RoomConfig;
+  /** Reconnect bundle from a returning peer's localStorage stash. */
+  reattach?: { playerId: string; token: string };
 }
 
 function parseConfigFromQuery(params: URLSearchParams): RoomConfig {
@@ -51,9 +53,15 @@ const server = Bun.serve<WsData>({
       const displayName = url.searchParams.get('name') ?? 'Player';
       const peerId = registry.allocatePeerId();
       const desiredConfig = parseConfigFromQuery(url.searchParams);
+      const reattachToken = url.searchParams.get('token');
+      const reattachPlayerId = url.searchParams.get('playerId');
+      const reattach =
+        reattachToken && reattachPlayerId
+          ? { playerId: reattachPlayerId, token: reattachToken }
+          : undefined;
 
       const upgraded = server.upgrade(req, {
-        data: { peerId, roomId, displayName, isLobby, desiredConfig },
+        data: { peerId, roomId, displayName, isLobby, desiredConfig, reattach },
       });
       if (upgraded) return undefined;
       return new Response('Upgrade failed', { status: 400 });
@@ -75,7 +83,16 @@ const server = Bun.serve<WsData>({
       if (ws.data.roomId !== 'main') {
         registry.getOrCreateRoom(ws.data.roomId, ws.data.desiredConfig);
       }
-      registry.joinRoom(ws.data.roomId, ws.data.displayName, sink);
+      if (ws.data.reattach) {
+        registry.reattachPeer(
+          ws.data.roomId,
+          ws.data.reattach.playerId,
+          ws.data.reattach.token,
+          sink,
+        );
+      } else {
+        registry.joinRoom(ws.data.roomId, ws.data.displayName, sink);
+      }
     },
     message(ws: ServerWebSocket<WsData>, raw: string | Buffer) {
       const text = typeof raw === 'string' ? raw : raw.toString('utf8');

@@ -52,6 +52,8 @@ export class GameRoom {
     PlayerId,
     { aboutPlayerId: PlayerId; alignment: Alignment }
   > = new Map();
+  /** Reconnect token for each seated player. Issued at addPeer; presented at reattachPeer. */
+  private readonly reconnectTokens: Map<PlayerId, string> = new Map();
 
   constructor(roomId: RoomId, config: RoomConfig, rng?: () => number) {
     this.state = {
@@ -106,16 +108,69 @@ export class GameRoom {
       this.state.hostPlayerId = playerId;
     }
 
+    const reconnectToken = randHex(this.rng, 16);
+    this.reconnectTokens.set(playerId, reconnectToken);
+
     const out: Outbound[] = [
       {
         peer: peerId,
-        msg: { type: 'Welcome', protocol: PROTOCOL_VERSION, peerId, yourPlayerId: playerId },
+        msg: {
+          type: 'Welcome',
+          protocol: PROTOCOL_VERSION,
+          peerId,
+          yourPlayerId: playerId,
+          reconnectToken,
+        },
       },
       {
         peer: peerId,
         msg: { type: 'RoomJoined', state: projectView(this.state, playerId) },
       },
     ];
+    this.broadcastUpdate(out, { except: peerId });
+    return out;
+  }
+
+  /**
+   * Re-attach a returning peer to an existing in-game player slot. The caller
+   * (transport layer) supplies the new peerId allocated for this socket plus
+   * the playerId + reconnectToken the client stashed in localStorage on
+   * first join.
+   *
+   * Returns Error{unknown_room|bad_password} on token mismatch (re-using the
+   * existing error codes — both signal "you can't have this seat").
+   */
+  reattachPeer(peerId: PeerId, playerId: PlayerId, token: string): Outbound[] {
+    const expected = this.reconnectTokens.get(playerId);
+    if (!expected || expected !== token) {
+      return [{ peer: peerId, msg: errMsg('bad_password', 'Invalid reconnect token') }];
+    }
+    const player = this.state.players.find((p) => p.id === playerId);
+    if (!player) {
+      return [{ peer: peerId, msg: errMsg('unknown_room', 'Player no longer in this room') }];
+    }
+    // Bump the seat to the new peerId. Old peerId may already be cleared
+    // (server-side close handler ran).
+    const oldPeer = this.playerToPeer.get(playerId);
+    if (oldPeer !== undefined) this.seats.delete(oldPeer);
+    this.seats.set(peerId, playerId);
+    this.playerToPeer.set(playerId, peerId);
+    player.connected = true;
+
+    const out: Outbound[] = [
+      {
+        peer: peerId,
+        msg: {
+          type: 'Welcome',
+          protocol: PROTOCOL_VERSION,
+          peerId,
+          yourPlayerId: playerId,
+          reconnectToken: token,
+        },
+      },
+      { peer: peerId, msg: { type: 'GameStateUpdate', state: projectView(this.state, playerId) } },
+    ];
+    // Tell everyone else the player is back online.
     this.broadcastUpdate(out, { except: peerId });
     return out;
   }
@@ -128,16 +183,19 @@ export class GameRoom {
     this.playerToPeer.delete(playerId);
 
     if (this.state.phase === 'lobby') {
-      // Drop the player entirely; renumber seats.
+      // Drop the player entirely; renumber seats. Token is no longer useful.
       this.state.players = this.state.players
         .filter((p) => p.id !== playerId)
         .map((p, idx) => ({ ...p, seat: idx }));
+      this.reconnectTokens.delete(playerId);
       // If host left, promote next seat.
       if (this.state.hostPlayerId === playerId) {
         this.state.hostPlayerId = this.state.players[0]?.id ?? '';
       }
     } else {
       // Mark disconnected; reconnection grace handled by transport later.
+      // Keep the playerId reservation + reconnectToken alive so reattachPeer
+      // can resume the seat.
       const player = this.state.players.find((p) => p.id === playerId);
       if (player) player.connected = false;
     }

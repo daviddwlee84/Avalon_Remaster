@@ -168,6 +168,7 @@ export const ServerMsgSchema = z.discriminatedUnion('type', [
     protocol: z.number(),
     peerId: z.number(),
     yourPlayerId: z.string(),
+    reconnectToken: z.string(),
   }),
   z.object({ type: z.literal('RoomList'), rooms: z.array(RoomSummarySchema) }),
   z.object({ type: z.literal('RoomJoined'), state: PlayerViewSchema }),

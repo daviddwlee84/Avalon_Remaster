@@ -281,6 +281,89 @@ describe('GameRoom — Lady of the Lake state machine', () => {
   });
 });
 
+describe('GameRoom — reattach grace flow', () => {
+  it('Welcome carries a reconnectToken that reattachPeer accepts', () => {
+    const room = new GameRoom('r1', {
+      useLadyOfTheLake: false,
+      useMordred: false,
+      useMorganaPercival: false,
+      useOberon: false,
+      rngSeed: 99,
+    });
+    const welcome1 = room.addPeer(10, 'Alice').find((o) => o.msg.type === 'Welcome');
+    if (!welcome1 || welcome1.msg.type !== 'Welcome') throw new Error('no Welcome');
+    const { yourPlayerId, reconnectToken } = welcome1.msg;
+    expect(reconnectToken).toMatch(/^[0-9a-f]{16}$/);
+
+    // Seat 5 players total + start the game so we're in-game.
+    for (let i = 1; i < 5; i++) room.addPeer(10 + i, `P${i}`);
+    room.apply(10, { type: 'StartGame' });
+    expect(room._stateForTesting().phase).toBe('team_selection');
+
+    // Simulate Alice disconnecting — server-side removePeer fires.
+    room.removePeer(10);
+    const alice = room._stateForTesting().players.find((p) => p.id === yourPlayerId);
+    expect(alice?.connected).toBe(false);
+
+    // Alice reconnects with a new peerId, valid token.
+    const out = room.reattachPeer(99, yourPlayerId, reconnectToken);
+    const welcome2 = out.find((o) => o.peer === 99 && o.msg.type === 'Welcome');
+    expect(welcome2?.msg.type).toBe('Welcome');
+    if (welcome2?.msg.type === 'Welcome') {
+      expect(welcome2.msg.yourPlayerId).toBe(yourPlayerId);
+      expect(welcome2.msg.reconnectToken).toBe(reconnectToken);
+    }
+    expect(alice?.connected).toBe(true);
+  });
+
+  it('reattach with wrong token returns Error', () => {
+    const room = new GameRoom('r1', {
+      useLadyOfTheLake: false,
+      useMordred: false,
+      useMorganaPercival: false,
+      useOberon: false,
+      rngSeed: 5,
+    });
+    const w = room.addPeer(1, 'A').find((o) => o.msg.type === 'Welcome');
+    if (!w || w.msg.type !== 'Welcome') throw new Error('no Welcome');
+    const out = room.reattachPeer(2, w.msg.yourPlayerId, 'not-the-right-token');
+    const err = out.find((o) => o.msg.type === 'Error');
+    expect(err && err.msg.type === 'Error' ? err.msg.code : null).toBe('bad_password');
+  });
+
+  it('reattach for unknown playerId returns Error', () => {
+    const room = new GameRoom('r1', {
+      useLadyOfTheLake: false,
+      useMordred: false,
+      useMorganaPercival: false,
+      useOberon: false,
+      rngSeed: 2,
+    });
+    room.addPeer(1, 'A');
+    const out = room.reattachPeer(99, 'p_deadbeef', 'whatever');
+    expect(out.some((o) => o.msg.type === 'Error')).toBe(true);
+  });
+
+  it('lobby-phase disconnect drops the player and invalidates the token', () => {
+    const room = new GameRoom('r1', {
+      useLadyOfTheLake: false,
+      useMordred: false,
+      useMorganaPercival: false,
+      useOberon: false,
+      rngSeed: 3,
+    });
+    const w = room.addPeer(1, 'A').find((o) => o.msg.type === 'Welcome');
+    if (!w || w.msg.type !== 'Welcome') throw new Error('no Welcome');
+    room.addPeer(2, 'B');
+    expect(room._stateForTesting().phase).toBe('lobby');
+
+    room.removePeer(1);
+    // Token should no longer reattach.
+    const out = room.reattachPeer(3, w.msg.yourPlayerId, w.msg.reconnectToken);
+    expect(out.some((o) => o.msg.type === 'Error')).toBe(true);
+  });
+});
+
 describe('GameRoom — losing paths', () => {
   it('5 consecutive rejections → evil wins by five_rejections', () => {
     const room = startGame(5, 5);

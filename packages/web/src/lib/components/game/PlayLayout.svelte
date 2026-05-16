@@ -17,13 +17,26 @@
     roomLabel: string;
     /** URL the "Leave" link goes to. Defaults to home. */
     leaveHref?: string;
+    /**
+     * When set, the GameStore stashes the server's reconnect token under this
+     * roomId so a refresh resumes the seat. Net-mode passes the URL roomId;
+     * LAN-mode leaves it undefined (LAN session is transient, no replay).
+     */
+    reconnectRoomId?: string;
   }
 
-  let { session, displayName, roomLabel, leaveHref = '/' }: Props = $props();
+  let {
+    session,
+    displayName,
+    roomLabel,
+    leaveHref = '/',
+    reconnectRoomId,
+  }: Props = $props();
 
   // `session` is owned by the parent route and stable for the life of this layout.
   // Reading it via untrack so Svelte doesn't warn about capturing only the initial value.
   const store = new GameStore(untrack(() => session));
+  store.reconnectRoomId = untrack(() => reconnectRoomId) ?? null;
 
   let selectedTeam = $state<string[]>([]);
   let chatInput = $state('');

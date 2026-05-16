@@ -89,12 +89,17 @@ export function buildRoomWsUrl(
   roomId: string,
   displayName: string,
   config?: RoomCreateConfig,
+  reconnect?: { playerId: string; token: string },
 ): string {
   const params = new URLSearchParams({ name: displayName });
   if (config?.useMordred) params.set('mordred', '1');
   if (config?.useMorganaPercival) params.set('morgana', '1');
   if (config?.useOberon) params.set('oberon', '1');
   if (config?.useLadyOfTheLake) params.set('lady', '1');
+  if (reconnect) {
+    params.set('playerId', reconnect.playerId);
+    params.set('token', reconnect.token);
+  }
   const path = roomId === 'main' ? '/ws' : `/ws/${encodeURIComponent(roomId)}`;
 
   // In dev: Vite on :5173, Bun server on :3000. Override via PUBLIC_AVALON_WS_ORIGIN if needed.

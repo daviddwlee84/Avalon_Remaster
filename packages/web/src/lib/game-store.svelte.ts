@@ -2,6 +2,7 @@ import type { Alignment, ChatLine, PlayerView, ServerMsg } from '@avalon/game-co
 
 import { t } from './i18n/locale.svelte';
 import type { Session } from './transport/types';
+import { clearReconnect, saveReconnect } from './storage';
 
 interface LadyResult {
   aboutPlayerId: string;
@@ -33,6 +34,14 @@ export class GameStore {
   private nextToastId = 1;
   private unsub: (() => void) | null = null;
 
+  /**
+   * Set by the route hosting this GameStore. When set, GameStore latches the
+   * server's Welcome.reconnectToken into localStorage so a refresh can resume
+   * the same seat via the reattach query params. Clearing it on game-end
+   * is the route's responsibility (or just clearReconnect manually).
+   */
+  reconnectRoomId: string | null = null;
+
   constructor(private session: Session) {
     this.unsub = session.subscribe((msg) => this.handle(msg));
   }
@@ -47,11 +56,18 @@ export class GameStore {
       case 'Welcome':
         this.myPeerId = msg.peerId;
         this.myPlayerId = msg.yourPlayerId;
-        break;
-      case 'RoomJoined':
-        this.view = msg.state;
+        if (this.reconnectRoomId) {
+          saveReconnect(this.reconnectRoomId, {
+            playerId: msg.yourPlayerId,
+            token: msg.reconnectToken,
+          });
+        }
         break;
       case 'GameStateUpdate':
+        // Game-end → drop the stash so the next visit starts a fresh seat.
+        if (msg.state.phase === 'finished' && this.reconnectRoomId) {
+          clearReconnect(this.reconnectRoomId);
+        }
         this.view = msg.state;
         if (msg.state.ladyOfTheLakeLearned) {
           this.ladyResult = {
@@ -59,6 +75,9 @@ export class GameStore {
             alignment: msg.state.ladyOfTheLakeLearned.alignment,
           };
         }
+        break;
+      case 'RoomJoined':
+        this.view = msg.state;
         break;
       case 'RoleReveal':
         this.view = msg.state;

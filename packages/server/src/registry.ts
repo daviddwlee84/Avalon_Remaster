@@ -22,6 +22,13 @@ interface PeerRegistration {
 /**
  * Owns all GameRooms in the server process plus the peer ↔ room mapping.
  * Routes incoming ClientMsgs to the right room and fans out resulting Outbound[].
+ *
+ * Phase 7a reconnection note: there is no explicit grace timer. While a peer
+ * is in-game and disconnected, the engine keeps the player slot alive (with
+ * `connected:false`) and the reconnect token in its private map. A returning
+ * peer presenting the token via reattachPeer resumes the seat. If they never
+ * return, the seat stays warm for the room's lifetime — which is bounded by
+ * room GC (room destroys when all peers leave, except the 'main' room).
  */
 export class RoomRegistry {
   private nextPeerId = 1;
@@ -56,6 +63,23 @@ export class RoomRegistry {
     this.notifyLobby();
   }
 
+  /**
+   * Re-attach a returning peer using the token + playerId they stashed on
+   * their first join. Cancels any pending grace timer for that seat.
+   */
+  reattachPeer(roomId: string, playerId: string, token: string, sink: PeerSink): void {
+    const room = this.rooms.get(roomId);
+    if (!room) {
+      sink.send({ type: 'Error', code: 'unknown_room', message: `Room ${roomId} not found` });
+      return;
+    }
+    this.peers.set(sink.peerId, { peerId: sink.peerId, roomId, sink });
+    const out = room.reattachPeer(sink.peerId, playerId, token);
+    this.dispatch(out);
+    const succeeded = out.some((o) => o.msg.type === 'Welcome');
+    if (succeeded) this.notifyLobby();
+  }
+
   applyToRoom(peerId: number, msg: ClientMsg): void {
     const reg = this.peers.get(peerId);
     if (!reg) return;
@@ -77,7 +101,7 @@ export class RoomRegistry {
       const out = room.removePeer(peerId);
       this.dispatch(out);
       if (room.isEmpty()) {
-        // Don't garbage-collect the default 'main' room for Phase 1 stability.
+        // Don't garbage-collect the default 'main' room.
         if (reg.roomId !== 'main') this.rooms.delete(reg.roomId);
       }
     }
