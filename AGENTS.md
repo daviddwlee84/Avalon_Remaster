@@ -1,95 +1,100 @@
+# CLAUDE.md
 
-<!-- project-knowledge-harness:agent-guidance -->
-<!-- Snippet for the project's agent contract file (AGENTS.md / CLAUDE.md /
-     similar). The bundled scripts/init.sh appends this between sentinel
-     markers; safe to re-run. -->
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-### Long-term backlog → `TODO.md` + `backlog/`
+## What this project is
 
-When the user surfaces an idea explicitly **not** being implemented this
-session (signals: "maybe later", "nice to have", "if I'm interested",
-"工程量太大需要再評估", "先記下來"), add an entry to [`TODO.md`](TODO.md) using
-the priority + effort tag schema. Do **not** create new `ROADMAP.md` /
-`IDEAS.md` / `BACKLOG.md` files — `TODO.md` is the single index.
+A from-scratch PWA rewrite of The Resistance: Avalon. The original socket.io + vanilla JS Chinese implementation at `references/Avalon/` is the source of game rules and reused art; the active codebase lives in `packages/`. The Rust + WebRTC project at `references/Chinese-Chess_Xiangqi/` is **not Avalon** — it's a structural reference we lift networking patterns from (especially the transport-agnostic room state machine).
 
-The bundled `scripts/todo-kanban.sh` validates the format. Run it
-(`scripts/todo-kanban.sh --validate-only TODO.md`) after editing so syntax
-drift is caught immediately.
+Phase 1 (minimum playable Net mode) has shipped. The roadmap and current backlog are in `TODO.md` (kanban view via `scripts/todo-kanban.sh`) with per-phase research in `backlog/`.
 
-#### Three ways to add a TODO entry (preferred order)
+## Commands
 
-1. **Structured CLI — `scripts/add-todo.sh`** (default):
+Always run from the repo root (Bun workspaces resolve `--filter` patterns there). The dev servers must run separately because `bun run dev` backgrounds the server (shell quirk) — use two terminals.
 
-   ```
-   scripts/add-todo.sh --priority P3 --effort M \
-     --title "Title" --description "Description"
-   ```
+```bash
+bun install                                 # install all workspace deps
 
-   Inserts a canonically-formatted line into the right `## P*` lane and
-   re-runs the validator. Add `--backlog` to also scaffold
-   `backlog/<slug>.md` from the bundled template.
+# Dev — two terminals
+bun run dev:server                          # Bun WS server on :3000
+bun run dev:web                             # Vite dev server on :5173
 
-2. **Quick capture — `backlog/inbox.md`** (when priority/effort unclear):
+# Tests
+bun run --filter '@avalon/game-core' test   # engine unit + property tests (~1s)
+bun run --filter '@avalon/web' test:e2e     # Playwright 5-context smoke
 
-   ```
-   echo "- maybe add docs versioning with mike" >> backlog/inbox.md
-   ```
+# Single Vitest file or test name
+cd packages/game-core && bun run vitest run src/view.test.ts
+cd packages/game-core && bun run vitest run -t "Merlin sees all evil except Mordred"
 
-   When the user asks "sweep the inbox", run
-   `scripts/sweep-inbox.sh`. It prompts for the missing fields per loose
-   line and calls `add-todo.sh`. Use `--batch` for non-interactive runs
-   that only formalize lines with parseable `key=value` pairs.
+# Single Playwright file or test name
+cd packages/web && bunx playwright test smoke.spec.ts
+cd packages/web && bunx playwright test -g "5 players can join"
 
-3. **Direct edit of `TODO.md`** — fine if the format is fresh; run
-   `scripts/todo-kanban.sh --validate-only` afterwards.
+# Build / typecheck
+bun run build                               # builds every package
+bun run --filter '@avalon/web' check        # svelte-check + svelte-kit sync
+bun run --filter '@avalon/server' typecheck
 
-Add a `backlog/<slug>.md` companion doc when the item meets any of:
+# Server smoke
+curl http://localhost:3000/health
+```
 
-- carries a `P?` tag (record what was tried so it doesn't need re-investigation)
-- captures a paused troubleshooting session that you intend to fix later
-  (preserve the error trace + root cause analysis before context evaporates)
-- weighs multiple options (record trade-offs, not only the winner)
-- is `[L]` or `[XL]` (architectural; needs design before code)
+If a Playwright run leaves servers behind: `lsof -ti:3000 -ti:5173 | xargs kill -9`.
 
-`[S]` items rarely need a backlog doc — a file path in the `TODO.md` line is
-usually enough. See [`backlog/README.md`](backlog/README.md) for the full
-template and "when to add a doc" rules.
+## Architecture — the parts that aren't discoverable
 
-When implementing a `TODO.md` item, in the same commit:
+Read `docs/architecture.md` for the long form. The non-obvious points:
 
-1. Run `scripts/promote-todo.sh --title "<substring>" --summary "<what shipped>"`
-   to move the entry into `## Done` with the dated syntax and re-validate.
-2. Mark the corresponding `backlog/<slug>.md` (if any) `Status: shipped`
-   and keep it as a historical record (don't delete — future-you may
-   revisit adjacent decisions).
+### Strict module dependency direction
 
-`backlog/` is excluded from N/A (no packaging — these files stay in the repo) (see N/A); it
-is repo metadata for maintainers, not user-facing config to deploy.
+```
+game-core ◄── protocol ◄── { web, server, tui }
+```
 
-### Past pitfalls → `pitfalls/`
+`@avalon/game-core` has **zero** runtime dependencies (zod is a peer of `@avalon/protocol`, not game-core) so it runs identically in browser / Bun / Vitest. Never add a Node-only or browser-only import to it. The TS message types live in `game-core/src/messages.ts`; the Zod schemas that validate them at the wire boundary live in `@avalon/protocol`. Both must stay in sync — `satisfies z.ZodType<T>` in `protocol/src/index.ts` enforces that at compile time.
 
-When you spend more than ~15 minutes debugging something that wasn't
-googleable and the fix is non-obvious, write a `pitfalls/<slug>.md`
-capturing:
+### Transport-agnostic `GameRoom` (`packages/game-core/src/room.ts`)
 
-1. **Verbatim symptom** — copy-paste error messages exactly, do not
-   paraphrase (preserves grep-ability for future-you / future agent)
-2. **Root cause** — why this happens (with source / docs / upstream issue link)
-3. **Workaround** — copy-pasteable commands or config diff
-4. **Prevention** — how to avoid stepping on this again
+Single entry point `apply(peerId: PeerId, msg: ClientMsg) → Outbound[]`. The same instance is meant to drive:
+- The Bun WS server (Phase 1 done; `packages/server/src/registry.ts` maps `peerId ↔ WebSocket`)
+- A LAN host browser over WebRTC DataChannels (Phase 4 — pattern lifted from `references/Chinese-Chess_Xiangqi/clients/chess-web/src/host_room.rs`)
 
-Title the doc by the **symptom**, not the root cause (you'll search by what
-you're seeing, not by what you eventually learned). See
-[`pitfalls/README.md`](pitfalls/README.md) for the full template and
-when-to-add rules.
+Never put transport-specific logic into `GameRoom`. Everything that crosses the wire goes through `Outbound[]` so the transport layer can fan-out without inspecting message content.
 
-**Pitfall vs Hard invariant**: a pitfall *graduates* to a Hard invariant in
-this file when it (a) recurs across machines/agents/sessions despite being
-documented, (b) silently corrupts state, or (c) the workaround is non-obvious
-enough that "remember to do X" isn't safe. When graduating, leave the
-`pitfalls/<slug>.md` as historical record and link to it from the new
-invariant.
+### `projectView` is the security boundary (`packages/game-core/src/view.ts`)
 
-`pitfalls/` is excluded from N/A (no packaging — these files stay in the repo) (see N/A) and
-**not** auto-redacted; review for secrets before committing.
-<!-- project-knowledge-harness:agent-guidance --> (end)
+The server never ships `GameState` to clients. Every state-carrying `ServerMsg` carries a per-recipient `PlayerView` projected by `projectView(state, viewerPlayerId)`. Role visibility (Merlin sees evil except Mordred, Percival sees Merlin+Morgana indistinguishably, etc.) is filtered there and nowhere else. **Before merging any change to `GameRoom` or `projectView`, ensure `view-leak.property.test.ts` still passes** — the property test asserts no other player's role string appears in any reachable view's JSON.
+
+### Web client is mode-agnostic by design
+
+`packages/web/src/lib/transport/types.ts` defines a `Session` interface. Today only `WsSession` (browser `WebSocket`) implements it; Phase 4 adds `WebRtcTransport` and `HostRoomBridge` with the same interface. The play page (`src/routes/play/[roomId]/+page.svelte`) must not branch on which transport is underneath — that's how we'll get LAN mode without duplicating the gameplay UI.
+
+## Workflow with the knowledge harness
+
+Three repo-root surfaces work together — full rules in `AGENTS.md`:
+
+- **`TODO.md`** — long-term backlog. **Do not create new `ROADMAP.md` / `IDEAS.md` / `BACKLOG.md` files.** Use `scripts/add-todo.sh --priority {P1|P2|P3|P?} --effort {S|M|L|XL} --title "…" --description "…"` (add `--backlog` to scaffold a research doc). Validate with `scripts/todo-kanban.sh --validate-only TODO.md` after manual edits.
+- **`backlog/<slug>.md`** — per-item research notes. Required for `[L]` / `[XL]` items and any `P?` item.
+- **`pitfalls/<slug>.md`** — symptom-first knowledge base. Title by the verbatim error or observable behaviour, NOT the root cause. Copy errors exactly — paraphrasing kills grep-ability.
+
+When implementing a TODO item: `scripts/promote-todo.sh --title "<substring>" --summary "<what shipped>"` in the same commit moves it to the `## Done` lane with the dated syntax.
+
+## Pitfalls already captured (read before re-debugging)
+
+If you encounter any of these symptoms, **check `pitfalls/` first** — they're documented:
+
+- `WebSocket failed: Insufficient resources` or rapid open/close churn after navigating to a Svelte page → `$effect` re-running because of `$state` writes inside it. Use `onMount` for one-shot setup.
+- `[vite] ws proxy socket error: read ECONNRESET` → Vite's WebSocket proxy doesn't handle `Bun.serve` upgrades cleanly. Connect direct to `:3000` in dev (`buildRoomWsUrl()` in `packages/web/src/lib/transport/ws.svelte.ts` already does this — don't reintroduce the Vite proxy).
+- `strict mode violation: getByText(...) resolved to N elements` → Player names appear in both the status bar and player list. Use `.first()` or a parent-scoped locator (`page.getByRole('listitem', ...)` + scoped `getByText`).
+
+## When you find a new gotcha
+
+Spend more than ~15 minutes on something non-googleable? Write `pitfalls/<symptom-slug>.md` while the trace is fresh, copy errors verbatim, and update `pitfalls/README.md`'s index table. See `AGENTS.md` "Past pitfalls → `pitfalls/`" for the full template.
+
+## References
+
+- Implementation plan: `.claude/plans/avalon-pwa-game-references-avalon-abstract-duckling.md`
+- Architecture deep dive: `docs/architecture.md`
+- Game rules (canonical source, Chinese): `references/Avalon/index.js` — quest team sizes at `:9-16`, role distributions at `:18-25`, round-4 special rule at `:571-580`
+- Networking pattern source (Rust): `references/Chinese-Chess_Xiangqi/crates/chess-net/src/room.rs`, `clients/chess-web/src/transport/`, `clients/chess-web/src/host_room.rs`
