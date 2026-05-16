@@ -5,9 +5,11 @@ import { defineConfig } from 'vite';
 
 // When deployed under a sub-path (GitHub Pages: /Avalon_Remaster), the PWA
 // manifest's start_url + scope + icon paths must use that prefix. Driven by
-// the same BASE_PATH env var that svelte.config.js reads.
-const isPages = process.env.BUILD_TARGET === 'pages';
-const basePath = isPages ? (process.env.BASE_PATH ?? '') : '';
+// the same BASE_PATH env var that svelte.config.js reads. BUILD_TARGET=static
+// (Docker self-host) uses an empty base path — the bundle is served from root.
+const target = process.env.BUILD_TARGET;
+const isPagesBuild = target === 'pages';
+const basePath = isPagesBuild ? (process.env.BASE_PATH ?? '') : '';
 const prefix = (p: string) => `${basePath}${p}`;
 
 export default defineConfig({
