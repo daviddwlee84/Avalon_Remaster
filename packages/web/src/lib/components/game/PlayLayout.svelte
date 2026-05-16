@@ -6,6 +6,7 @@
   import RoleCardReveal from '$lib/components/game/RoleCardReveal.svelte';
   import VoteRevealStrip from '$lib/components/game/VoteRevealStrip.svelte';
   import { GameStore } from '$lib/game-store.svelte';
+  import HelpDialog from '$lib/components/help/HelpDialog.svelte';
   import { t } from '$lib/i18n/locale.svelte';
   import type { Session } from '$lib/transport/types';
   import { onDestroy, untrack } from 'svelte';
@@ -41,6 +42,7 @@
   let selectedTeam = $state<string[]>([]);
   let chatInput = $state('');
   let chatOpen = $state(false);
+  let helpOpen = $state(false);
 
   onDestroy(() => {
     store.dispose();
@@ -138,16 +140,17 @@
   >
     {t('play.leave')}
   </a>
-  <a
-    href="{leaveHref.replace(/\/$/, '')}/help"
-    target="_blank"
-    rel="noopener"
+  <button
+    type="button"
     class="font-display inline-flex items-center gap-1 text-xs opacity-70 hover:opacity-100"
     title={t('help.title')}
+    onclick={() => (helpOpen = true)}
   >
     {t('help.button')}
-  </a>
+  </button>
 </div>
+
+<HelpDialog open={helpOpen} onOpenChange={(o) => (helpOpen = o)} />
 
 {#if !view}
   <div class="mt-12 text-center">

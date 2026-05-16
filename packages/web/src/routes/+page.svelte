@@ -3,6 +3,7 @@
   import { base } from '$app/paths';
   import { Button, Card, Dialog, DialogContent } from '$lib/components/ui';
   import CreateRoomForm from '$lib/components/game/CreateRoomForm.svelte';
+  import HelpDialog from '$lib/components/help/HelpDialog.svelte';
   import LocaleSwitch from '$lib/components/i18n/LocaleSwitch.svelte';
   import { t } from '$lib/i18n/locale.svelte';
   import { loadDisplayName, saveDisplayName, stashPendingConfig } from '$lib/storage';
@@ -12,6 +13,7 @@
   let displayName = $state('');
   let roomId = $state('main');
   let createOpen = $state(false);
+  let helpOpen = $state(false);
   /**
    * Net mode requires a Bun WS server. Three ways it gets enabled:
    * 1. Build-time PUBLIC_AVALON_WS_ORIGIN baked in (the GH Pages →
@@ -203,11 +205,17 @@
       Net mode requires a server. This deploy is LAN-only.
       <span class="mx-2 opacity-50">·</span>
     {/if}
-    <a href="{base}/help" class="underline decoration-gold/60 underline-offset-2 hover:text-gold"
-      >{t('help.button')}</a
+    <button
+      type="button"
+      class="underline decoration-gold/60 underline-offset-2 hover:text-gold"
+      onclick={() => (helpOpen = true)}
     >
+      {t('help.button')}
+    </button>
   </p>
 </section>
+
+<HelpDialog open={helpOpen} onOpenChange={(o) => (helpOpen = o)} />
 
 <Dialog
   open={createOpen}
