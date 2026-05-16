@@ -11,9 +11,22 @@
   let displayName = $state('');
   let roomId = $state('main');
   let createOpen = $state(false);
+  /**
+   * Net mode requires a Bun WS server. On a GH Pages deploy (or any static
+   * host) with no `PUBLIC_AVALON_WS_ORIGIN` baked in, hide Net mode entries —
+   * leaving Net mode visible would silently fail and confuse first-time
+   * users. localhost dev is the escape hatch.
+   */
+  let netAvailable = $state(true);
 
   onMount(() => {
     displayName = loadDisplayName();
+    const envOrigin =
+      (import.meta as unknown as { env?: Record<string, string | undefined> }).env
+        ?.PUBLIC_AVALON_WS_ORIGIN ?? '';
+    const isLocalhost =
+      window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    netAvailable = Boolean(envOrigin) || isLocalhost;
   });
 
   function commitName(): boolean {
@@ -61,8 +74,50 @@
     <p class="mt-2 text-xs tracking-[0.3em] opacity-60 uppercase">{t('home.tagline')}</p>
   </div>
 
-  <Card>
-    <form class="space-y-4" onsubmit={join}>
+  {#if netAvailable}
+    <Card>
+      <form class="space-y-4" onsubmit={join}>
+        <label class="block">
+          <span class="font-display mb-1 block text-xs tracking-wider opacity-70 uppercase"
+            >{t('home.displayName')}</span
+          >
+          <input
+            id="displayName-input"
+            type="text"
+            class="w-full rounded-md border border-ink/30 bg-parchment/80 px-3 py-2 placeholder:opacity-50 focus-visible:ring-2 focus-visible:ring-gold/60 focus-visible:outline-none"
+            placeholder={t('home.displayName.placeholder')}
+            maxlength="24"
+            required
+            bind:value={displayName}
+          />
+        </label>
+        <label class="block">
+          <span class="font-display mb-1 block text-xs tracking-wider opacity-70 uppercase"
+            >{t('home.roomName')}</span
+          >
+          <input
+            type="text"
+            class="w-full rounded-md border border-ink/30 bg-parchment/80 px-3 py-2 placeholder:opacity-50 focus-visible:ring-2 focus-visible:ring-gold/60 focus-visible:outline-none"
+            placeholder={t('home.roomName.placeholder')}
+            bind:value={roomId}
+          />
+        </label>
+        <div class="grid grid-cols-2 gap-2">
+          <Button variant="gold" size="lg" type="submit" class="w-full">
+            {t('home.joinRoom')}
+          </Button>
+          <Button variant="outline" size="lg" type="button" class="w-full" onclick={openCreate}>
+            {t('home.createRoom')}
+          </Button>
+        </div>
+      </form>
+    </Card>
+  {/if}
+
+  <!-- Display name input is needed for LAN flow too — render a standalone copy
+       when Net mode is unavailable so the LAN buttons still have a name. -->
+  {#if !netAvailable}
+    <Card>
       <label class="block">
         <span class="font-display mb-1 block text-xs tracking-wider opacity-70 uppercase"
           >{t('home.displayName')}</span
@@ -75,27 +130,13 @@
           maxlength="24"
           required
           bind:value={displayName}
+          onblur={() => {
+            if (displayName.trim()) saveDisplayName(displayName.trim());
+          }}
         />
       </label>
-      <label class="block">
-        <span class="font-display mb-1 block text-xs tracking-wider opacity-70 uppercase"
-          >{t('home.roomName')}</span
-        >
-        <input
-          type="text"
-          class="w-full rounded-md border border-ink/30 bg-parchment/80 px-3 py-2 placeholder:opacity-50 focus-visible:ring-2 focus-visible:ring-gold/60 focus-visible:outline-none"
-          placeholder={t('home.roomName.placeholder')}
-          bind:value={roomId}
-        />
-      </label>
-      <div class="grid grid-cols-2 gap-2">
-        <Button variant="gold" size="lg" type="submit" class="w-full">{t('home.joinRoom')}</Button>
-        <Button variant="outline" size="lg" type="button" class="w-full" onclick={openCreate}>
-          {t('home.createRoom')}
-        </Button>
-      </div>
-    </form>
-  </Card>
+    </Card>
+  {/if}
 
   <Card class="mt-4">
     <div class="text-center">
@@ -109,7 +150,10 @@
           size="lg"
           type="button"
           class="w-full"
-          onclick={() => goto('/lan/host')}
+          onclick={() => {
+            if (displayName.trim()) saveDisplayName(displayName.trim());
+            goto('/lan/host');
+          }}
         >
           {t('home.lan.host')}
         </Button>
@@ -118,7 +162,10 @@
           size="lg"
           type="button"
           class="w-full"
-          onclick={() => goto('/lan/join')}
+          onclick={() => {
+            if (displayName.trim()) saveDisplayName(displayName.trim());
+            goto('/lan/join');
+          }}
         >
           {t('home.lan.join')}
         </Button>
@@ -126,11 +173,17 @@
     </div>
   </Card>
 
-  <p class="mt-6 text-center text-xs tracking-wider opacity-60">
-    <a href="/lobby" class="underline decoration-gold/60 underline-offset-2 hover:text-gold"
-      >{t('home.viewRooms')}</a
-    >
-  </p>
+  {#if netAvailable}
+    <p class="mt-6 text-center text-xs tracking-wider opacity-60">
+      <a href="/lobby" class="underline decoration-gold/60 underline-offset-2 hover:text-gold"
+        >{t('home.viewRooms')}</a
+      >
+    </p>
+  {:else}
+    <p class="mt-6 text-center text-xs tracking-wider opacity-60">
+      Net mode requires a server. This deploy is LAN-only.
+    </p>
+  {/if}
 </section>
 
 <Dialog

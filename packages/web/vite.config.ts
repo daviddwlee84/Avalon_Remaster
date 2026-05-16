@@ -3,6 +3,13 @@ import { SvelteKitPWA } from '@vite-pwa/sveltekit';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
+// When deployed under a sub-path (GitHub Pages: /Avalon_Remaster), the PWA
+// manifest's start_url + scope + icon paths must use that prefix. Driven by
+// the same BASE_PATH env var that svelte.config.js reads.
+const isPages = process.env.BUILD_TARGET === 'pages';
+const basePath = isPages ? (process.env.BASE_PATH ?? '') : '';
+const prefix = (p: string) => `${basePath}${p}`;
+
 export default defineConfig({
   plugins: [
     tailwindcss(),
@@ -20,13 +27,14 @@ export default defineConfig({
         background_color: '#f5e9d3',
         display: 'standalone',
         orientation: 'any',
-        start_url: '/',
-        scope: '/',
+        start_url: prefix('/'),
+        scope: prefix('/'),
+        id: prefix('/'),
         lang: 'zh-TW',
         icons: [
-          { src: '/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
+          { src: prefix('/icon.svg'), sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
           {
-            src: '/icon.svg',
+            src: prefix('/icon.svg'),
             sizes: 'any',
             type: 'image/svg+xml',
             purpose: 'maskable',

@@ -1,0 +1,54 @@
+name: Deploy PWA to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment per ref; cancel in-progress runs when
+# new commits land. (Don't cancel an already-deployed run — that's harmless.)
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build static bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false # references/ are read-only; no build dep on them
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Build static bundle (BASE_PATH=/Avalon_Remaster)
+        env:
+          BUILD_TARGET: pages
+          BASE_PATH: /Avalon_Remaster
+          # Leave PUBLIC_AVALON_WS_ORIGIN unset by default → LAN-only deploy.
+          # To enable Net mode against an external WS server, override here:
+          # PUBLIC_AVALON_WS_ORIGIN: wss://your-avalon-server.example
+        run: bun run --filter '@avalon/web' build
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: packages/web/build
+
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment
