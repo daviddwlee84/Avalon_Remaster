@@ -15,9 +15,79 @@
       rel="stylesheet"
     />
     <title>Avalon</title>
+    <!--
+      Inline splash. Renders before any JS chunk downloads so users on slow
+      networks see immediate feedback. +layout.svelte adds `app-ready` to
+      <body> on mount, which hides #avalon-splash. CSS only — no JS needed
+      to render, no JS needed to dismiss (the class flip in layout's onMount
+      cuts it).
+    -->
+    <style>
+      #avalon-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.5rem;
+        background:
+          radial-gradient(ellipse at top, rgba(184, 134, 11, 0.08), transparent 60%),
+          radial-gradient(ellipse at bottom, rgba(139, 0, 0, 0.06), transparent 60%),
+          #f5e9d3;
+        color: #1a0f00;
+        font-family: 'Cinzel', 'IM Fell English', 'Cardo', serif;
+        z-index: 9999;
+      }
+      #avalon-splash .splash-logo {
+        font-size: 4rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        color: #b8860b;
+        text-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+      }
+      #avalon-splash .splash-tag {
+        font-size: 0.7rem;
+        letter-spacing: 0.3em;
+        text-transform: uppercase;
+        opacity: 0.6;
+      }
+      #avalon-splash .splash-spinner {
+        width: 2.5rem;
+        height: 2.5rem;
+        border: 2px solid rgba(184, 134, 11, 0.25);
+        border-top-color: #b8860b;
+        border-radius: 50%;
+        animation: avalon-spin 0.9s linear infinite;
+      }
+      @keyframes avalon-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #avalon-splash .splash-spinner {
+          animation: none;
+          opacity: 0.6;
+        }
+      }
+      body.app-ready #avalon-splash {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 300ms ease-out;
+      }
+      body.app-ready #avalon-splash.gone {
+        display: none;
+      }
+    </style>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">
+    <div id="avalon-splash" aria-hidden="true">
+      <div class="splash-logo">Avalon</div>
+      <div class="splash-spinner" role="presentation"></div>
+      <div class="splash-tag">The Resistance · Loading</div>
+    </div>
     <div style="display: contents">%sveltekit.body%</div>
   </body>
 </html>

@@ -2,6 +2,8 @@
   import { base } from '$app/paths';
   import { Button, Card } from '$lib/components/ui';
   import PlayLayout from '$lib/components/game/PlayLayout.svelte';
+  import QrPanel from '$lib/components/lan/QrPanel.svelte';
+  import QrScanDialog from '$lib/components/lan/QrScanDialog.svelte';
   import { t } from '$lib/i18n/locale.svelte';
   import { loadDisplayName, saveDisplayName } from '$lib/storage';
   import { connectAsJoiner, type WebRtcSession } from '$lib/transport/webrtc.svelte';
@@ -17,6 +19,7 @@
   let displayName = $state('Joiner');
   let offerBlob = $state('');
   let lastError = $state<string | null>(null);
+  let scanOpen = $state(false);
 
   onMount(() => {
     displayName = loadDisplayName() || 'Joiner';
@@ -92,34 +95,53 @@
           {lastError}
         </p>
       {/if}
-      <Button
-        class="mt-3"
-        variant="gold"
-        size="lg"
-        disabled={stage.kind === 'generating'}
-        onclick={generateAnswer}
-      >
-        {stage.kind === 'generating' ? t('lan.join.generating') : t('lan.join.generate')}
-      </Button>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <Button
+          variant="gold"
+          size="lg"
+          disabled={stage.kind === 'generating'}
+          onclick={generateAnswer}
+        >
+          {stage.kind === 'generating' ? t('lan.join.generating') : t('lan.join.generate')}
+        </Button>
+        <Button
+          variant="outline"
+          size="lg"
+          onclick={() => (scanOpen = true)}
+          disabled={stage.kind === 'generating'}
+        >
+          📷 {t('lan.qr.scanOffer')}
+        </Button>
+      </div>
     </Card>
+    <QrScanDialog
+      open={scanOpen}
+      onOpenChange={(o) => (scanOpen = o)}
+      onResult={(text) => (offerBlob = text)}
+    />
   </section>
 {:else if stage.kind === 'show-answer'}
   <section class="mx-auto max-w-2xl py-6 space-y-4">
     <h1 class="font-display text-2xl font-bold tracking-wide">{t('lan.join.sendAnswer.title')}</h1>
     <Card>
-      <textarea
-        class="block h-32 w-full rounded-md border border-ink/30 bg-parchment/80 p-2 font-mono text-xs"
-        readonly
-        value={stage.answer}
-      ></textarea>
-      <Button
-        class="mt-2"
-        size="sm"
-        variant="outline"
-        onclick={() => copy(stage.kind === 'show-answer' ? stage.answer : '')}
-      >
-        {t('lan.join.copyAnswer')}
-      </Button>
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <QrPanel value={stage.answer} label={t('lan.qr.answerLabel')} />
+        <div class="flex-1">
+          <textarea
+            class="block h-32 w-full rounded-md border border-ink/30 bg-parchment/80 p-2 font-mono text-xs"
+            readonly
+            value={stage.answer}
+          ></textarea>
+          <Button
+            class="mt-2"
+            size="sm"
+            variant="outline"
+            onclick={() => copy(stage.kind === 'show-answer' ? stage.answer : '')}
+          >
+            {t('lan.join.copyAnswer')}
+          </Button>
+        </div>
+      </div>
       <p class="mt-3 text-xs opacity-70">{t('lan.join.answerNote')}</p>
       <Button class="mt-3" variant="gold" onclick={enterGame}>{t('lan.join.iSentIt')}</Button>
     </Card>

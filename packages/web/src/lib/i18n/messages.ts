@@ -202,6 +202,14 @@ const zhTW: Messages = {
   'lan.host.offerError': '產生 offer 失敗：{msg}',
   'lan.host.nameRequired': '請先輸入加入者的名稱。',
   'lan.host.dcTimeout': 'DataChannel 未在 10 秒內開啟。兩台裝置是否都在同一個 LAN，且沒有開啟 VPN？',
+  'lan.qr.scan': '掃描 QR Code',
+  'lan.qr.scanOffer': '掃描主機 offer',
+  'lan.qr.scanAnswer': '掃描加入者 answer',
+  'lan.qr.offerLabel': 'Offer · 給加入者掃描',
+  'lan.qr.answerLabel': 'Answer · 給主機掃描',
+  'lan.qr.alignHint': '把鏡頭對準對方螢幕上的 QR Code。',
+  'lan.qr.close': '關閉',
+  'lan.qr.cameraUnavailable': '此瀏覽器無法存取相機。請手動貼上文字。',
 
   // LAN join page
   'lan.join.title': '加入 LAN 對局',
@@ -424,6 +432,15 @@ const en: Messages = {
   'lan.host.nameRequired': 'Enter the joiner\'s display name first.',
   'lan.host.dcTimeout':
     'DataChannel did not open within 10 s. Are both devices on the same LAN with no VPN active?',
+  'lan.qr.scan': 'Scan QR code',
+  'lan.qr.scanOffer': "Scan host's offer",
+  'lan.qr.scanAnswer': "Scan joiner's answer",
+  'lan.qr.offerLabel': 'Offer · scan from joiner',
+  'lan.qr.answerLabel': 'Answer · scan from host',
+  'lan.qr.alignHint': 'Point the camera at the QR code on the other screen.',
+  'lan.qr.close': 'Close',
+  'lan.qr.cameraUnavailable':
+    'This browser cannot access the camera. Paste the text manually instead.',
 
   'lan.join.title': 'Join a LAN game',
   'lan.join.pasteOffer': 'Paste the host\'s offer',

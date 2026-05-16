@@ -11,6 +11,15 @@
   // pick up the user's saved choice or navigator-detected default.
   onMount(() => {
     localeStore.hydrate();
+    // Hide the inline app.html splash now that JS has hydrated. The fade-out
+    // takes 300 ms (see #avalon-splash CSS in app.html); after that, mark
+    // the element 'gone' so it stops eating clicks even if it stuck around.
+    if (typeof document !== 'undefined') {
+      document.body.classList.add('app-ready');
+      setTimeout(() => {
+        document.getElementById('avalon-splash')?.classList.add('gone');
+      }, 350);
+    }
   });
 </script>
 
