@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '$lib/i18n/locale.svelte';
   import { onMount } from 'svelte';
 
   interface Props {
@@ -12,17 +13,17 @@
   let flipped = $state(false);
 
   onMount(() => {
-    const t = setTimeout(() => {
+    const tm = setTimeout(() => {
       flipped = true;
     }, 80);
-    return () => clearTimeout(t);
+    return () => clearTimeout(tm);
   });
 </script>
 
 <div class="text-center">
-  <p class="font-display text-xs tracking-[0.25em] opacity-60 uppercase">Lady of the Lake</p>
+  <p class="font-display text-xs tracking-[0.25em] opacity-60 uppercase">{t('lady.heading')}</p>
   <p class="mt-2 text-sm opacity-70">
-    Inspecting <strong class="font-display">{targetName}</strong>
+    {t('lady.inspecting', { name: targetName })}
   </p>
 
   <div class="mx-auto mt-3 mb-4 h-[200px] w-[200px] flip-3d">
@@ -48,10 +49,10 @@
       >
         <div class="text-parchment">
           <div class="font-display text-5xl font-bold tracking-widest uppercase">
-            {alignment}
+            {t(alignment === 'evil' ? 'lady.alignment.evil' : 'lady.alignment.good')}
           </div>
           <div class="mt-1 text-xs tracking-wider opacity-80 uppercase">
-            {alignment === 'evil' ? 'Servant of Mordred' : 'Loyal to Arthur'}
+            {t(alignment === 'evil' ? 'lady.alignment.evil.sub' : 'lady.alignment.good.sub')}
           </div>
         </div>
       </div>
@@ -63,6 +64,6 @@
     class="font-display inline-flex h-11 items-center justify-center rounded-md border border-gold/60 bg-gradient-to-b from-gold-bright to-gold px-6 text-sm font-medium tracking-wider text-ink uppercase shadow-[0_2px_0_rgba(0,0,0,0.25)] transition hover:from-[#e0b35a] hover:to-[#c89720] focus-visible:ring-2 focus-visible:ring-gold/70 focus-visible:ring-offset-2 focus-visible:ring-offset-parchment focus-visible:outline-none active:translate-y-px"
     onclick={onDismiss}
   >
-    Keep it secret
+    {t('lady.button')}
   </button>
 </div>

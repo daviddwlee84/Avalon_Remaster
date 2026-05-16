@@ -1,5 +1,6 @@
 <script lang="ts">
   import { Button } from '$lib/components/ui';
+  import { t } from '$lib/i18n/locale.svelte';
   import { useRegisterSW } from 'virtual:pwa-register/svelte';
 
   const { needRefresh, offlineReady, updateServiceWorker } = useRegisterSW({
@@ -28,11 +29,8 @@
     role="alert"
   >
     <div class="p-3">
-      <p class="font-display text-sm font-bold tracking-wider uppercase">Update available</p>
-      <p class="mt-1 text-xs opacity-70">
-        A new version has been downloaded. Reload now or keep playing on the old one — your
-        choice.
-      </p>
+      <p class="font-display text-sm font-bold tracking-wider uppercase">{t('pwa.update.title')}</p>
+      <p class="mt-1 text-xs opacity-70">{t('pwa.update.body')}</p>
       <div class="mt-2 flex gap-2">
         <Button
           variant="gold"
@@ -41,9 +39,9 @@
             void updateServiceWorker(true);
           }}
         >
-          Reload now
+          {t('pwa.update.reload')}
         </Button>
-        <Button variant="outline" size="sm" onclick={dismissUpdate}>Later</Button>
+        <Button variant="outline" size="sm" onclick={dismissUpdate}>{t('pwa.update.later')}</Button>
       </div>
     </div>
   </div>
@@ -54,7 +52,9 @@
     class="fixed inset-x-4 bottom-4 z-40 mx-auto max-w-md rounded-md border border-good/60 bg-good/10 p-2 text-center text-xs shadow-lg sm:right-4 sm:left-auto"
     role="status"
   >
-    <span class="font-display tracking-wider text-good uppercase">Ready for offline play</span>
-    <button class="ml-2 underline hover:opacity-80" onclick={dismissOfflineReady}>dismiss</button>
+    <span class="font-display tracking-wider text-good uppercase">{t('pwa.offlineReady')}</span>
+    <button class="ml-2 underline hover:opacity-80" onclick={dismissOfflineReady}
+      >{t('pwa.dismiss')}</button
+    >
   </div>
 {/if}

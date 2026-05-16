@@ -26,8 +26,10 @@ test('5 players can join, start, and receive role reveal', async ({ browser }) =
       page.on('pageerror', (err) => console.log(`[${name}] pageerror:`, err.message));
 
       // Persist display name then go straight to the room.
+      // Lock locale to 'en' so the test asserts against the English copy.
       await page.addInitScript((displayName) => {
         localStorage.setItem('avalon.displayName', displayName);
+        localStorage.setItem('avalon.locale', 'en');
       }, name);
 
       await page.goto(`/play/${roomId}`);
@@ -57,9 +59,9 @@ test('5 players can join, start, and receive role reveal', async ({ browser }) =
       await expect(page.getByText('Your role')).toBeHidden();
     }
 
-    // The active phase chip should now read "team_selection" everywhere.
+    // The active phase chip should now read the translated phase.team_selection.
     for (const page of pages) {
-      await expect(page.locator('strong', { hasText: 'team_selection' })).toBeVisible();
+      await expect(page.locator('strong', { hasText: 'Team selection' })).toBeVisible();
     }
   } finally {
     for (const ctx of contexts) {

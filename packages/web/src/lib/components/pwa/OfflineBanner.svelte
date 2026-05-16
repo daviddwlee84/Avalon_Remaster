@@ -1,5 +1,6 @@
 <script lang="ts">
   import { page } from '$app/state';
+  import { t } from '$lib/i18n/locale.svelte';
   import { onMount } from 'svelte';
 
   let online = $state(true);
@@ -26,16 +27,17 @@
     role="status"
   >
     <div class="px-3 py-2 text-xs">
-      <p class="font-display tracking-wider uppercase">⚠ You are offline</p>
+      <p class="font-display tracking-wider uppercase">{t('offline.title')}</p>
       {#if isNetPlay}
         <p class="mt-0.5">
-          Net mode needs internet. Try <a href="/lan/host" class="font-medium underline">LAN mode</a>
-          — works on the same WiFi with no server.
+          {t('offline.netPlay')}<a href="/lan/host" class="font-medium underline"
+            >{t('offline.netPlay.link')}</a
+          >{t('offline.netPlay.tail')}
         </p>
       {:else if isLan}
-        <p class="mt-0.5">LAN mode works without internet once the SDP exchange is done.</p>
+        <p class="mt-0.5">{t('offline.lan')}</p>
       {:else}
-        <p class="mt-0.5">Net play is unavailable until you reconnect; LAN mode still works.</p>
+        <p class="mt-0.5">{t('offline.generic')}</p>
       {/if}
     </div>
   </div>

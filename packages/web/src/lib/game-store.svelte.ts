@@ -1,5 +1,6 @@
 import type { Alignment, ChatLine, PlayerView, ServerMsg } from '@avalon/game-core';
 
+import { t } from './i18n/locale.svelte';
 import type { Session } from './transport/types';
 
 interface LadyResult {
@@ -63,12 +64,14 @@ export class GameStore {
         this.view = msg.state;
         this.showRoleReveal = true;
         break;
-      case 'QuestResult':
+      case 'QuestResult': {
+        const key = msg.outcome === 'success' ? 'toast.questResult.success' : 'toast.questResult.fail';
         this.pushToast(
-          `Round ${msg.round}: ${msg.outcome.toUpperCase()} (${msg.fails} fail${msg.fails === 1 ? '' : 's'})`,
+          t(key, { round: msg.round, n: msg.fails, s: msg.fails === 1 ? '' : 's' }),
           msg.outcome === 'success' ? 'info' : 'error',
         );
         break;
+      }
       case 'ChatLine':
         this.chat = [...this.chat, msg.line];
         break;

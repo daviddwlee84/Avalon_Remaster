@@ -1,6 +1,7 @@
 <script lang="ts">
   import { Button, Card } from '$lib/components/ui';
   import PlayLayout from '$lib/components/game/PlayLayout.svelte';
+  import { t } from '$lib/i18n/locale.svelte';
   import { loadDisplayName, saveDisplayName } from '$lib/storage';
   import { connectAsJoiner, type WebRtcSession } from '$lib/transport/webrtc.svelte';
   import { onMount } from 'svelte';
@@ -23,7 +24,7 @@
   async function generateAnswer() {
     const name = displayName.trim();
     if (!name) {
-      lastError = 'Enter a display name first.';
+      lastError = t('lan.join.nameRequired');
       return;
     }
     saveDisplayName(name);
@@ -58,16 +59,16 @@
   href="/"
   class="font-display inline-flex items-center gap-1 text-sm opacity-70 hover:opacity-100"
 >
-  ← Back
+  {t('lan.host.back')}
 </a>
 
 {#if stage.kind === 'paste-offer' || stage.kind === 'generating'}
   <section class="mx-auto max-w-2xl py-6 space-y-4">
-    <h1 class="font-display text-3xl font-bold tracking-wide">Join a LAN game</h1>
+    <h1 class="font-display text-3xl font-bold tracking-wide">{t('lan.join.title')}</h1>
     <Card>
       <label class="block mb-3">
         <span class="font-display mb-1 block text-xs tracking-wider opacity-70 uppercase"
-          >Display name</span
+          >{t('lan.join.displayName')}</span
         >
         <input
           type="text"
@@ -78,7 +79,7 @@
         />
       </label>
       <h2 class="font-display mb-2 text-xs tracking-wider opacity-70 uppercase">
-        Paste the host's offer
+        {t('lan.join.pasteOffer')}
       </h2>
       <textarea
         class="block h-32 w-full rounded-md border border-ink/30 bg-parchment/80 p-2 font-mono text-xs"
@@ -97,27 +98,29 @@
         disabled={stage.kind === 'generating'}
         onclick={generateAnswer}
       >
-        {stage.kind === 'generating' ? 'Generating…' : 'Generate answer'}
+        {stage.kind === 'generating' ? t('lan.join.generating') : t('lan.join.generate')}
       </Button>
     </Card>
   </section>
 {:else if stage.kind === 'show-answer'}
   <section class="mx-auto max-w-2xl py-6 space-y-4">
-    <h1 class="font-display text-2xl font-bold tracking-wide">Send this answer to the host</h1>
+    <h1 class="font-display text-2xl font-bold tracking-wide">{t('lan.join.sendAnswer.title')}</h1>
     <Card>
       <textarea
         class="block h-32 w-full rounded-md border border-ink/30 bg-parchment/80 p-2 font-mono text-xs"
         readonly
         value={stage.answer}
       ></textarea>
-      <Button class="mt-2" size="sm" variant="outline" onclick={() => copy(stage.kind === 'show-answer' ? stage.answer : '')}>
-        Copy answer
+      <Button
+        class="mt-2"
+        size="sm"
+        variant="outline"
+        onclick={() => copy(stage.kind === 'show-answer' ? stage.answer : '')}
+      >
+        {t('lan.join.copyAnswer')}
       </Button>
-      <p class="mt-3 text-xs opacity-70">
-        After the host pastes this into their tab and accepts, the connection opens automatically and
-        you'll see the game.
-      </p>
-      <Button class="mt-3" variant="gold" onclick={enterGame}>I've sent the answer — enter game</Button>
+      <p class="mt-3 text-xs opacity-70">{t('lan.join.answerNote')}</p>
+      <Button class="mt-3" variant="gold" onclick={enterGame}>{t('lan.join.iSentIt')}</Button>
     </Card>
   </section>
 {:else if stage.kind === 'playing'}

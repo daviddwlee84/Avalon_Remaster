@@ -2,6 +2,7 @@
   import { Button, Card } from '$lib/components/ui';
   import CreateRoomForm from '$lib/components/game/CreateRoomForm.svelte';
   import PlayLayout from '$lib/components/game/PlayLayout.svelte';
+  import { t } from '$lib/i18n/locale.svelte';
   import { HostRoomBridge } from '$lib/transport/host-bridge';
   import { connectAsHost, waitForDcOpen, type HostHandshake } from '$lib/transport/webrtc.svelte';
   import type { Session } from '$lib/transport/types';
@@ -48,7 +49,7 @@
       const hh = await connectAsHost('lan-only');
       stage = { kind: 'inviting', handshake: hh, joinerName: '', answer: '', error: null };
     } catch (e) {
-      lastError = `Failed to generate offer: ${(e as Error).message}`;
+      lastError = t('lan.host.offerError', { msg: (e as Error).message });
     }
   }
 
@@ -56,7 +57,7 @@
     if (stage.kind !== 'inviting' || !bridge) return;
     const { handshake, joinerName, answer } = stage;
     if (!joinerName.trim()) {
-      stage = { ...stage, error: 'Enter the joiner\'s display name first.' };
+      stage = { ...stage, error: t('lan.host.nameRequired') };
       return;
     }
     const result = await handshake.acceptAnswer(answer);
@@ -66,11 +67,7 @@
     }
     const opened = await waitForDcOpen(handshake.dc, 10_000);
     if (!opened) {
-      stage = {
-        ...stage,
-        error:
-          'DataChannel did not open within 10 s. Are both devices on the same LAN with no VPN active?',
-      };
+      stage = { ...stage, error: t('lan.host.dcTimeout') };
       return;
     }
     bridge.attachJoinerDataChannel(handshake.dc, joinerName.trim());
@@ -116,76 +113,79 @@
   href="/"
   class="font-display inline-flex items-center gap-1 text-sm opacity-70 hover:opacity-100"
 >
-  ← Back
+  {t('lan.host.back')}
 </a>
 
 {#if stage.kind === 'configure'}
   <section class="mx-auto max-w-md py-6">
     <h1 class="font-display mb-4 text-center text-3xl font-bold tracking-wide">
-      Host a LAN game
+      {t('lan.host.title')}
     </h1>
     <Card>
-      <CreateRoomForm
-        onSubmit={onCreateConfig}
-        onCancel={() => history.back()}
-      />
+      <CreateRoomForm onSubmit={onCreateConfig} onCancel={() => history.back()} />
     </Card>
   </section>
 {:else if stage.kind === 'seated'}
   <section class="mx-auto max-w-lg py-6 space-y-4">
-    <h1 class="font-display text-3xl font-bold tracking-wide">Inviting players</h1>
+    <h1 class="font-display text-3xl font-bold tracking-wide">{t('lan.host.inviting.title')}</h1>
     <Card>
-      <p class="font-display mb-2 text-xs tracking-wider opacity-70 uppercase">Seated</p>
+      <p class="font-display mb-2 text-xs tracking-wider opacity-70 uppercase">
+        {t('lan.host.seated.heading')}
+      </p>
       <ul class="space-y-1 text-sm">
         {#each stage.roster as name (name)}
           <li class="rounded border border-ink/10 bg-parchment/60 px-3 py-1.5">{name}</li>
         {/each}
       </ul>
       <p class="mt-3 text-xs opacity-60">
-        {bridge?.peerCount() ?? 0}/5–10 players seated.
+        {t('lan.host.seated.count', { n: bridge?.peerCount() ?? 0 })}
       </p>
     </Card>
     {#if lastError}
       <p class="rounded border border-blood/60 bg-blood/10 p-3 text-sm text-blood">{lastError}</p>
     {/if}
     <div class="flex flex-wrap gap-2">
-      <Button variant="gold" size="lg" onclick={inviteNext}>Invite next player</Button>
+      <Button variant="gold" size="lg" onclick={inviteNext}>{t('lan.host.invite.button')}</Button>
       <Button
         variant="primary"
         size="lg"
         disabled={(bridge?.peerCount() ?? 0) < 5}
         onclick={startPlaying}
       >
-        Enter game · {bridge?.peerCount() ?? 0}/5
+        {t('lan.host.enterGame.button')} · {bridge?.peerCount() ?? 0}/5
       </Button>
     </div>
-    <p class="text-xs opacity-60">
-      Tip: each invite is a one-shot offer/answer dance. Open <code class="rounded bg-parchment-deep
-        px-1">/lan/join</code> on the joiner's device, paste the offer, paste the answer back.
-    </p>
+    <p class="text-xs opacity-60">{t('lan.host.tip')}</p>
   </section>
 {:else if stage.kind === 'inviting'}
   <section class="mx-auto max-w-2xl py-6 space-y-4">
-    <h1 class="font-display text-2xl font-bold tracking-wide">Invite a player</h1>
+    <h1 class="font-display text-2xl font-bold tracking-wide">{t('lan.host.inviting.title')}</h1>
     <Card>
       <h2 class="font-display mb-2 text-xs tracking-wider opacity-70 uppercase">
-        1 · Send this offer to the joiner
+        {t('lan.host.step1')}
       </h2>
       <textarea
         class="block h-32 w-full rounded-md border border-ink/30 bg-parchment/80 p-2 font-mono text-xs"
         readonly
         value={stage.handshake.offerBlob}
       ></textarea>
-      <Button class="mt-2" size="sm" variant="outline" onclick={() => copy(stage.kind === 'inviting' ? stage.handshake.offerBlob : '')}>
-        Copy offer
+      <Button
+        class="mt-2"
+        size="sm"
+        variant="outline"
+        onclick={() => copy(stage.kind === 'inviting' ? stage.handshake.offerBlob : '')}
+      >
+        {t('lan.host.copyOffer')}
       </Button>
     </Card>
     <Card>
       <h2 class="font-display mb-2 text-xs tracking-wider opacity-70 uppercase">
-        2 · Paste the joiner's answer
+        {t('lan.host.step2')}
       </h2>
       <label class="block mb-2 text-xs">
-        <span class="font-display block tracking-wider opacity-70 uppercase">Joiner display name</span>
+        <span class="font-display block tracking-wider opacity-70 uppercase"
+          >{t('lan.host.joinerName')}</span
+        >
         <input
           type="text"
           maxlength="24"
@@ -215,16 +215,11 @@
         </p>
       {/if}
       <div class="mt-3 flex gap-2">
-        <Button variant="gold" onclick={acceptAnswer}>Accept answer</Button>
-        <Button variant="outline" onclick={cancelInvite}>Cancel</Button>
+        <Button variant="gold" onclick={acceptAnswer}>{t('lan.host.accept')}</Button>
+        <Button variant="outline" onclick={cancelInvite}>{t('lan.host.cancel')}</Button>
       </div>
     </Card>
   </section>
 {:else if stage.kind === 'playing' && hostSession}
-  <PlayLayout
-    session={hostSession}
-    {displayName}
-    roomLabel="LAN host"
-    leaveHref="/"
-  />
+  <PlayLayout session={hostSession} {displayName} roomLabel="LAN host" leaveHref="/" />
 {/if}

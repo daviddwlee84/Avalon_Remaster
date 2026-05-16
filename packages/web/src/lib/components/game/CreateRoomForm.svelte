@@ -18,6 +18,7 @@
 <script lang="ts">
   import type { RoomCreateConfig } from '$lib/transport/ws.svelte';
   import { Button } from '$lib/components/ui';
+  import { t } from '$lib/i18n/locale.svelte';
 
   interface Props {
     onSubmit: (args: { roomId: string; config: RoomCreateConfig }) => void;
@@ -59,16 +60,16 @@
 </script>
 
 <form class="space-y-4 text-left" onsubmit={submit}>
-  <h2 class="font-display text-center text-2xl font-bold tracking-wider">Create a room</h2>
+  <h2 class="font-display text-center text-2xl font-bold tracking-wider">{t('create.title')}</h2>
 
   <label class="block">
     <span class="font-display mb-1 block text-xs tracking-wider opacity-70 uppercase"
-      >Room name</span
+      >{t('create.roomName')}</span
     >
     <input
       type="text"
       class="w-full rounded-md border border-ink/30 bg-parchment/80 px-3 py-2 placeholder:opacity-50 focus-visible:ring-2 focus-visible:ring-gold/60 focus-visible:outline-none"
-      placeholder="cliff"
+      placeholder={t('create.roomName.placeholder')}
       maxlength="32"
       required
       bind:value={roomId}
@@ -77,13 +78,13 @@
 
   <fieldset class="space-y-2">
     <legend class="font-display mb-1 text-xs tracking-wider opacity-70 uppercase">
-      Special roles
+      {t('create.specials.legend')}
     </legend>
 
     {#each [
-      { key: 'mordred', label: 'Mordred', desc: 'Evil. Hidden from Merlin.', bind: () => useMordred, set: (v: boolean) => (useMordred = v) },
-      { key: 'morgana', label: 'Morgana + Percival', desc: 'Adds Percival (good) and Morgana (evil). Percival sees both as Merlin-like.', bind: () => useMorganaPercival, set: (v: boolean) => (useMorganaPercival = v) },
-      { key: 'oberon', label: 'Oberon', desc: 'Evil. Hidden from other evil. Merlin sees him.', bind: () => useOberon, set: (v: boolean) => (useOberon = v) },
+      { key: 'mordred', labelKey: 'create.specials.mordred.label', descKey: 'create.specials.mordred.desc', bind: () => useMordred, set: (v: boolean) => (useMordred = v) },
+      { key: 'morgana', labelKey: 'create.specials.morgana.label', descKey: 'create.specials.morgana.desc', bind: () => useMorganaPercival, set: (v: boolean) => (useMorganaPercival = v) },
+      { key: 'oberon', labelKey: 'create.specials.oberon.label', descKey: 'create.specials.oberon.desc', bind: () => useOberon, set: (v: boolean) => (useOberon = v) },
     ] as opt (opt.key)}
       <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-ink/15 bg-parchment/60 p-3 transition hover:border-gold-bright">
         <input
@@ -93,8 +94,8 @@
           onchange={(e) => opt.set((e.target as HTMLInputElement).checked)}
         />
         <span class="min-w-0 flex-1">
-          <span class="font-display block text-sm font-medium">{opt.label}</span>
-          <span class="block text-xs opacity-70">{opt.desc}</span>
+          <span class="font-display block text-sm font-medium">{t(opt.labelKey)}</span>
+          <span class="block text-xs opacity-70">{t(opt.descKey)}</span>
         </span>
       </label>
     {/each}
@@ -107,11 +108,10 @@
         onchange={(e) => (useLadyOfTheLake = (e.target as HTMLInputElement).checked)}
       />
       <span class="min-w-0 flex-1">
-        <span class="font-display block text-sm font-medium">Lady of the Lake</span>
-        <span class="block text-xs opacity-70">
-          Hard-interrupt phase after rounds 2/3/4: holder learns one target's alignment privately.
-          Requires 7+ players.
+        <span class="font-display block text-sm font-medium">
+          {t('create.specials.lady.label')}
         </span>
+        <span class="block text-xs opacity-70">{t('create.specials.lady.desc')}</span>
       </span>
     </label>
   </fieldset>
@@ -129,16 +129,16 @@
     class:!text-ink={usable && minPlayers === 5}
   >
     {#if !usable}
-      This combination is impossible — too many special roles for any supported player count.
+      {t('create.minPlayers.impossible')}
     {:else if minPlayers === 5}
-      Playable from 5+ players · default settings work for any group.
+      {t('create.minPlayers.fivePlus')}
     {:else}
-      Needs at least {minPlayers} players to start.
+      {t('create.minPlayers.needAtLeast', { n: minPlayers })}
     {/if}
   </p>
 
   <div class="flex justify-end gap-2 pt-2">
-    <Button type="button" variant="outline" onclick={onCancel}>Cancel</Button>
-    <Button type="submit" variant="gold" disabled={!usable}>Create &amp; join</Button>
+    <Button type="button" variant="outline" onclick={onCancel}>{t('create.cancel')}</Button>
+    <Button type="submit" variant="gold" disabled={!usable}>{t('create.submit')}</Button>
   </div>
 </form>

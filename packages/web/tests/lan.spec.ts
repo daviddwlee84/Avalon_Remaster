@@ -20,8 +20,14 @@ test('host + joiner exchange SDP and joiner enters PlayLayout', async ({ browser
     host.on('pageerror', (e) => console.log('[host] pageerror:', e.message));
     joiner.on('pageerror', (e) => console.log('[joiner] pageerror:', e.message));
 
-    await host.addInitScript(() => localStorage.setItem('avalon.displayName', 'HostUser'));
-    await joiner.addInitScript(() => localStorage.setItem('avalon.displayName', 'JoinerUser'));
+    await host.addInitScript(() => {
+      localStorage.setItem('avalon.displayName', 'HostUser');
+      localStorage.setItem('avalon.locale', 'en');
+    });
+    await joiner.addInitScript(() => {
+      localStorage.setItem('avalon.displayName', 'JoinerUser');
+      localStorage.setItem('avalon.locale', 'en');
+    });
 
     // Host: open /lan/host, accept default config, then invite a player.
     await host.goto('/lan/host');
